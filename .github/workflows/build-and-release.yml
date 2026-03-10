@@ -1,0 +1,203 @@
+name: Build and Release TA-MQTT
+
+on:
+    push:
+        branches:
+            - main
+            - develop
+        tags:
+            - "v*"
+    pull_request:
+        branches:
+            - main
+            - develop
+
+concurrency:
+    group: ta-mqtt-${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    build:
+        name: Build and Package
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        outputs:
+            app_version: ${{ steps.version.outputs.app_version }}
+            spl_name: ${{ steps.package.outputs.spl_name }}
+            build_tag: ${{ steps.meta.outputs.build_tag }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Set up Python 3.13
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.13"
+
+            - name: Extract app version
+              id: version
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  APP_VERSION=$(python3 -c 'import json; print(json.load(open("package/app.manifest", "r", encoding="utf-8"))["info"]["id"]["version"])')
+                  if [[ -z "$APP_VERSION" ]]; then
+                    echo "Failed to extract app version from package/app.manifest" >&2
+                    exit 1
+                  fi
+                  echo "app_version=$APP_VERSION" >> "$GITHUB_OUTPUT"
+                  echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
+
+            - name: Compute build metadata
+              id: meta
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  SHORT_SHA="${GITHUB_SHA::7}"
+                  BUILD_TAG="build-${SHORT_SHA}"
+                  echo "build_tag=$BUILD_TAG" >> "$GITHUB_OUTPUT"
+                  echo "SHORT_SHA=$SHORT_SHA" >> "$GITHUB_ENV"
+
+            - name: Enforce changelog update on version change
+              shell: bash
+              run: |
+                  set -euo pipefail
+
+                  before_version=""
+                  changed_files=""
+
+                  if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+                    BASE_REF="${{ github.base_ref }}"
+                    git fetch --no-tags --prune --depth=1 origin "$BASE_REF"
+                    before_version=$(git show "origin/${BASE_REF}:package/app.manifest" | python3 -c 'import json,sys; print(json.load(sys.stdin)["info"]["id"]["version"])')
+                    changed_files=$(git diff --name-only "origin/${BASE_REF}...${GITHUB_SHA}")
+                  elif [[ "${GITHUB_EVENT_NAME}" == "push" && "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]]; then
+                    before_version=$(git show "${{ github.event.before }}:package/app.manifest" | python3 -c 'import json,sys; print(json.load(sys.stdin)["info"]["id"]["version"])')
+                    changed_files=$(git diff --name-only "${{ github.event.before }}..${GITHUB_SHA}")
+                  else
+                    echo "No previous revision available for version diff; skipping changelog gate."
+                    exit 0
+                  fi
+
+                  if [[ "$before_version" != "$APP_VERSION" ]]; then
+                    if ! grep -qx "CHANGELOG.md" <<< "$changed_files"; then
+                      echo "Version changed from $before_version to $APP_VERSION, but CHANGELOG.md was not updated." >&2
+                      exit 1
+                    fi
+                  fi
+
+            - name: Create virtual environment
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  python3 -m venv .venv
+
+            - name: Install build dependencies
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  ./.venv/bin/pip install --upgrade pip
+                  ./.venv/bin/pip install -r requirements-build.txt
+
+            - name: Build add-on
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  rm -rf output/TA-MQTT
+                  ./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version "$APP_VERSION"
+
+            - name: Package .spl artifact
+              id: package
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  mkdir -p dist
+                  SPL_NAME="TA-MQTT-${APP_VERSION}.spl"
+                  tar -czf "dist/${SPL_NAME}" -C output TA-MQTT
+                  if ! tar -tzf "dist/${SPL_NAME}" | grep -q '^TA-MQTT/'; then
+                    echo "Package validation failed: TA-MQTT/ root missing." >&2
+                    exit 1
+                  fi
+                  echo "spl_name=${SPL_NAME}" >> "$GITHUB_OUTPUT"
+
+            - name: Enforce build/publish version parity inputs
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  if [[ "${{ steps.package.outputs.spl_name }}" != "TA-MQTT-${APP_VERSION}.spl" ]]; then
+                    echo "Artifact name does not match app version ${APP_VERSION}." >&2
+                    exit 1
+                  fi
+
+            - name: Upload packaged artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ta-mqtt-spl
+                  path: dist/*.spl
+                  retention-days: 30
+
+    release_latest:
+        name: Publish Latest Prerelease
+        needs: build
+        runs-on: ubuntu-latest
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        permissions:
+            contents: write
+        steps:
+            - name: Download packaged artifact
+              uses: actions/download-artifact@v4
+              with:
+                  name: ta-mqtt-spl
+                  path: dist
+
+            - name: Publish prerelease for this commit
+              uses: softprops/action-gh-release@v2
+              with:
+                  tag_name: ${{ needs.build.outputs.build_tag }}
+                  name: latest (prerelease) - ${{ needs.build.outputs.build_tag }}
+                  prerelease: true
+                  make_latest: false
+                  generate_release_notes: true
+                  files: dist/${{ needs.build.outputs.spl_name }}
+                  body: |
+                      Stream: latest prerelease
+                      Build: ${{ needs.build.outputs.build_tag }}
+                      Commit: ${{ github.sha }}
+                      App version: ${{ needs.build.outputs.app_version }}
+
+    release_stable:
+        name: Publish Stable Tagged Release
+        needs: build
+        runs-on: ubuntu-latest
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        permissions:
+            contents: write
+        steps:
+            - name: Verify tag matches app version
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  TAG_VERSION="${GITHUB_REF_NAME#v}"
+                  APP_VERSION="${{ needs.build.outputs.app_version }}"
+                  if [[ "$TAG_VERSION" != "$APP_VERSION" ]]; then
+                    echo "Tag version v${TAG_VERSION} does not match app version ${APP_VERSION}." >&2
+                    exit 1
+                  fi
+
+            - name: Download packaged artifact
+              uses: actions/download-artifact@v4
+              with:
+                  name: ta-mqtt-spl
+                  path: dist
+
+            - name: Publish stable release
+              uses: softprops/action-gh-release@v2
+              with:
+                  tag_name: ${{ github.ref_name }}
+                  name: TA-MQTT v${{ needs.build.outputs.app_version }}
+                  prerelease: false
+                  make_latest: true
+                  generate_release_notes: true
+                  files: dist/${{ needs.build.outputs.spl_name }}

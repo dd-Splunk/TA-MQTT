@@ -4,7 +4,7 @@ This guide covers local build and Docker-based testing for TA-MQTT.
 
 ## Prerequisites
 
-- Python 3.9+
+- Python 3.13
 - Docker Desktop (or Docker Engine) with Compose
 - Build dependencies from `requirements-build.txt`
 
@@ -23,6 +23,8 @@ python -m pip install -r requirements-build.txt
 ```
 
 Output is generated at `output/TA-MQTT/`.
+
+The value passed to `--ta-version` must match `package/app.manifest`.
 
 ## Start Splunk with Docker Compose
 
@@ -67,3 +69,19 @@ Optional app visibility check:
 ```bash
 curl -sk -u 'admin:<password>' 'https://localhost:8089/services/apps/local/TA-MQTT?output_mode=json'
 ```
+
+## CI/CD Build and Release
+
+GitHub Actions workflow: `.github/workflows/build-and-release.yml`
+
+- CI uses Python `3.13`.
+- CI reads app version from `package/app.manifest`.
+- CI builds and packages `dist/TA-MQTT-<version>.spl`.
+- Pushes to `main` publish prereleases using immutable tags (`build-<shortsha>`).
+- Pushes of semantic tags `vX.Y.Z` publish stable releases.
+
+### Version and Changelog Enforcement
+
+- `package/app.manifest` is the version source of truth.
+- Build and publish versions must match exactly.
+- If app version changes, `CHANGELOG.md` must be updated in the same PR/commit.

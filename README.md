@@ -21,6 +21,8 @@ python -m pip install -r requirements-build.txt
 docker compose up -d
 ```
 
+Local development and CI builds are pinned to Python 3.13.
+
 Open Splunk Web at `http://localhost:8000`, then configure a broker and create
 an input.
 
@@ -41,6 +43,23 @@ docker compose up -d splunk
 - [Setup and Build](docs/setup-and-build.md)
 - [Configuration and Events](docs/configuration-and-events.md)
 - [Troubleshooting](docs/troubleshooting.md)
+
+## CI/CD and Releases
+
+GitHub Actions workflow: `.github/workflows/build-and-release.yml`
+
+- Builds run on every push to `main` and `develop`, and on pull requests to those branches.
+- Python is pinned to `3.13` in CI.
+- Build version is read from `package/app.manifest` and passed to `ucc-gen build --ta-version`.
+- Output is packaged as `TA-MQTT-<version>.spl`.
+- On `main` pushes, CI publishes a prerelease stream with immutable per-commit tags (`build-<shortsha>`).
+- On semantic tags `vX.Y.Z`, CI publishes a stable GitHub Release.
+
+### Version Integrity Rules
+
+- `package/app.manifest` is the single source of truth for version.
+- Build version, `.spl` version, and release version must match.
+- If `package/app.manifest` version changes, `CHANGELOG.md` must be updated in the same change.
 
 ## License
 
