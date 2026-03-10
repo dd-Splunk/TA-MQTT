@@ -125,7 +125,8 @@ jobs:
                   cp -R output/TA-MQTT/. "${STAGE_DIR}/TA_MQTT/"
                   tar -czf "dist/${SPL_NAME}" -C "${STAGE_DIR}" TA_MQTT
                   rm -rf "${STAGE_DIR}"
-                  if ! tar -tzf "dist/${SPL_NAME}" | grep -Eq '^(\./)?TA_MQTT/'; then
+                  FIRST_ENTRY=$(tar -tzf "dist/${SPL_NAME}" | sed -n '1p')
+                  if [[ ! "$FIRST_ENTRY" =~ ^(\./)?TA_MQTT/ ]]; then
                     echo "Package validation failed: TA_MQTT/ root is missing." >&2
                     exit 1
                   fi
