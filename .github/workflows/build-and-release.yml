@@ -120,9 +120,10 @@ jobs:
                   fi
                   mkdir -p dist
                   SPL_NAME="TA-MQTT-${APP_VERSION}.spl"
-                  tar -czf "dist/${SPL_NAME}" -C output TA-MQTT
-                  if ! tar -tzf "dist/${SPL_NAME}" | grep -Eq '^(\./)?TA-MQTT/'; then
-                    echo "Package validation failed: TA-MQTT/ root missing." >&2
+                  # Downstream validators expect TA_MQTT as archive root.
+                  tar -czf "dist/${SPL_NAME}" -C output --transform 's,^TA-MQTT,TA_MQTT,' TA-MQTT
+                  if ! tar -tzf "dist/${SPL_NAME}" | grep -Eq '^(\./)?TA_MQTT/'; then
+                    echo "Package validation failed: TA_MQTT/ root is missing." >&2
                     exit 1
                   fi
                   echo "spl_name=${SPL_NAME}" >> "$GITHUB_OUTPUT"
