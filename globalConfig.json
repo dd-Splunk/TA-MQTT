@@ -75,6 +75,7 @@
                             "validators": [
                                 {
                                     "type": "string",
+                                    "minLength": 0,
                                     "maxLength": 255,
                                     "errorMsg": "Username must be 255 characters or fewer."
                                 }
@@ -90,6 +91,7 @@
                             "validators": [
                                 {
                                     "type": "string",
+                                    "minLength": 0,
                                     "maxLength": 255,
                                     "errorMsg": "Password must be 255 characters or fewer."
                                 }
@@ -124,6 +126,7 @@
                             "validators": [
                                 {
                                     "type": "string",
+                                    "minLength": 0,
                                     "maxLength": 20000,
                                     "errorMsg": "CA certificate must be 20000 characters or fewer."
                                 }
@@ -142,6 +145,7 @@
                             "validators": [
                                 {
                                     "type": "string",
+                                    "minLength": 0,
                                     "maxLength": 20000,
                                     "errorMsg": "Client certificate must be 20000 characters or fewer."
                                 }
@@ -161,6 +165,7 @@
                             "validators": [
                                 {
                                     "type": "string",
+                                    "minLength": 0,
                                     "maxLength": 20000,
                                     "errorMsg": "Client private key must be 20000 characters or fewer."
                                 }
