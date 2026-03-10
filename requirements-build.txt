@@ -1,0 +1,4 @@
+# TA-MQTT — build-time requirements (not bundled with the add-on)
+# Install with:  pip install -r requirements-build.txt
+
+splunk-add-on-ucc-framework>=5.35.0

@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "2.0.0",
+  "info": {
+    "title": "MQTT Broker Add-on for Splunk",
+    "id": {
+      "group": null,
+      "name": "TA-MQTT",
+      "version": "1.0.0"
+    },
+    "author": [
+      {
+        "name": "Dominique Dessy",
+        "email": "dominique.dessy@me.com",
+        "company": ""
+      }
+    ],
+    "releaseDate": null,
+    "description": "Multi-broker MQTT add-on for Splunk. Supports anonymous access, username/password, plain TLS, and mutual TLS (mTLS) with optional client certificates and skip-verify mode.",
+    "classification": {
+      "intendedAudience": null,
+      "categories": [],
+      "developmentStatus": "Development"
+    },
+    "commonInformationModels": null,
+    "license": {
+      "name": "Apache-2.0",
+      "uri": "https://www.apache.org/licenses/LICENSE-2.0"
+    },
+    "privacyPolicy": {
+      "name": "",
+      "url": null
+    },
+    "releaseNotes": "* Initial release — multi-broker MQTT subscriber with TLS, mTLS, and skip-verify support."
+  },
+  "dependencies": null,
+  "tasks": null,
+  "inputGroups": null,
+  "incompatibleApps": null,
+  "platformRequirements": null,
+  "supportedDeployments": [
+    "_standalone",
+    "_distributed"
+  ],
+  "targetWorkloads": [
+    "_search_heads",
+    "_indexers"
+  ]
+}

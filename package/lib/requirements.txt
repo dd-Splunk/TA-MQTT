@@ -1,0 +1,7 @@
+# TA-MQTT Python dependencies
+# ----------------------------
+# ucc-gen reads this file and pip-installs packages into output/<app>/lib/
+# during `ucc-gen build`.  Exact versions are pinned for reproducibility.
+
+paho-mqtt==1.6.1
+splunktaucclib>=6.6.0

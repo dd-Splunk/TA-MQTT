@@ -1,0 +1,393 @@
+{
+    "meta": {
+        "name": "TA-MQTT",
+        "restRoot": "TA_MQTT",
+        "version": "1.0.0",
+        "displayName": "MQTT Broker Add-on for Splunk",
+        "schemaVersion": "0.0.10"
+    },
+    "pages": {
+        "configuration": {
+            "title": "Configuration",
+            "description": "Define MQTT broker connections. Each broker can use anonymous access, username/password, plain TLS, or mutual TLS (mTLS) with client certificates.",
+            "tabs": [
+                {
+                    "name": "mqtt_broker",
+                    "title": "MQTT Brokers",
+                    "style": "page",
+                    "entity": [
+                        {
+                            "field": "name",
+                            "label": "Broker Name",
+                            "type": "text",
+                            "required": true,
+                            "help": "Unique identifier for this broker connection. Used to reference it in inputs.",
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 50,
+                                    "errorMsg": "Broker Name must be between 1 and 50 characters."
+                                },
+                                {
+                                    "type": "regex",
+                                    "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+                                    "errorMsg": "Must start with a letter and contain only letters, digits, and underscores."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "host",
+                            "label": "Broker Host",
+                            "type": "text",
+                            "required": true,
+                            "help": "Hostname or IP address of the MQTT broker (e.g. broker.hivemq.com or 192.168.1.10).",
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 255,
+                                    "errorMsg": "Host is required and must be at most 255 characters."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "port",
+                            "label": "Port",
+                            "type": "text",
+                            "required": true,
+                            "defaultValue": "1883",
+                            "help": "TCP port of the broker. Default: 1883 (plain), 8883 (TLS).",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$",
+                                    "errorMsg": "Port must be a valid integer between 1 and 65535."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "username",
+                            "label": "Username",
+                            "type": "text",
+                            "required": false,
+                            "help": "MQTT username. Leave empty for anonymous access."
+                        },
+                        {
+                            "field": "password",
+                            "label": "Password",
+                            "type": "text",
+                            "required": false,
+                            "encrypted": true,
+                            "help": "MQTT password. Leave empty for anonymous access."
+                        },
+                        {
+                            "field": "use_tls",
+                            "label": "Enable TLS/SSL",
+                            "type": "checkbox",
+                            "required": false,
+                            "defaultValue": false,
+                            "help": "Encrypt the connection with TLS. Required for mTLS brokers."
+                        },
+                        {
+                            "field": "skip_verify",
+                            "label": "Skip TLS Certificate Verification",
+                            "type": "checkbox",
+                            "required": false,
+                            "defaultValue": false,
+                            "help": "⚠️ Disables server certificate validation. Allows connecting to mTLS-enabled brokers without a trusted CA certificate. Use only in development or when the broker uses a self-signed certificate."
+                        },
+                        {
+                            "field": "ca_cert",
+                            "label": "CA Certificate (PEM)",
+                            "type": "textarea",
+                            "required": false,
+                            "options": {
+                                "rowsMin": 5,
+                                "rowsMax": 20
+                            },
+                            "help": "Optional. PEM-encoded CA certificate used to verify the broker's server certificate. If empty, the system trust store is used. Ignored when 'Skip TLS Certificate Verification' is checked."
+                        },
+                        {
+                            "field": "client_cert",
+                            "label": "Client Certificate (PEM)",
+                            "type": "textarea",
+                            "required": false,
+                            "options": {
+                                "rowsMin": 5,
+                                "rowsMax": 20
+                            },
+                            "help": "Optional. PEM-encoded client certificate for mutual TLS (mTLS) authentication. Must be provided together with the Client Private Key."
+                        },
+                        {
+                            "field": "client_key",
+                            "label": "Client Private Key (PEM)",
+                            "type": "textarea",
+                            "required": false,
+                            "encrypted": true,
+                            "options": {
+                                "rowsMin": 5,
+                                "rowsMax": 20
+                            },
+                            "help": "Optional. PEM-encoded private key corresponding to the client certificate. Stored encrypted. Must be provided together with the Client Certificate."
+                        }
+                    ],
+                    "table": {
+                        "header": [
+                            {
+                                "field": "name",
+                                "label": "Broker Name"
+                            },
+                            {
+                                "field": "host",
+                                "label": "Host"
+                            },
+                            {
+                                "field": "port",
+                                "label": "Port"
+                            },
+                            {
+                                "field": "use_tls",
+                                "label": "TLS"
+                            },
+                            {
+                                "field": "username",
+                                "label": "Username"
+                            }
+                        ],
+                        "actions": [
+                            "edit",
+                            "delete",
+                            "clone"
+                        ]
+                    }
+                },
+                {
+                    "name": "logging",
+                    "title": "Logging",
+                    "entity": [
+                        {
+                            "field": "loglevel",
+                            "label": "Log Level",
+                            "type": "singleSelect",
+                            "required": false,
+                            "defaultValue": "INFO",
+                            "help": "Controls the verbosity of the add-on's log output.",
+                            "options": {
+                                "disableonEdit": false,
+                                "autoCompleteFields": [
+                                    {
+                                        "value": "DEBUG",
+                                        "label": "DEBUG"
+                                    },
+                                    {
+                                        "value": "INFO",
+                                        "label": "INFO"
+                                    },
+                                    {
+                                        "value": "WARNING",
+                                        "label": "WARNING"
+                                    },
+                                    {
+                                        "value": "ERROR",
+                                        "label": "ERROR"
+                                    },
+                                    {
+                                        "value": "CRITICAL",
+                                        "label": "CRITICAL"
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        "inputs": {
+            "title": "Inputs",
+            "services": [
+                {
+                    "name": "mqtt_subscriber",
+                    "title": "MQTT Subscriber",
+                    "entity": [
+                        {
+                            "field": "name",
+                            "label": "Input Name",
+                            "type": "text",
+                            "required": true,
+                            "help": "Unique name for this input stanza.",
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100,
+                                    "errorMsg": "Input Name must be between 1 and 100 characters."
+                                },
+                                {
+                                    "type": "regex",
+                                    "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+                                    "errorMsg": "Must start with a letter and contain only letters, digits, and underscores."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "broker",
+                            "label": "MQTT Broker",
+                            "type": "singleSelect",
+                            "required": true,
+                            "help": "Select a broker connection defined on the Configuration page.",
+                            "options": {
+                                "endpointUrl": "TA_MQTT_mqtt_broker"
+                            }
+                        },
+                        {
+                            "field": "topic",
+                            "label": "Topic Filter",
+                            "type": "text",
+                            "required": true,
+                            "defaultValue": "#",
+                            "help": "MQTT topic filter. Use '#' to capture all topics, '+' as a single-level wildcard (e.g. 'sensors/+/temperature').",
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 500,
+                                    "errorMsg": "Topic filter cannot be empty."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "qos",
+                            "label": "Quality of Service (QoS)",
+                            "type": "singleSelect",
+                            "required": true,
+                            "defaultValue": "0",
+                            "help": "MQTT delivery guarantee. QoS 0 = fire-and-forget, QoS 1 = at least once, QoS 2 = exactly once.",
+                            "options": {
+                                "autoCompleteFields": [
+                                    {
+                                        "value": "0",
+                                        "label": "0 – At most once  (fire-and-forget)"
+                                    },
+                                    {
+                                        "value": "1",
+                                        "label": "1 – At least once (acknowledged)"
+                                    },
+                                    {
+                                        "value": "2",
+                                        "label": "2 – Exactly once  (assured)"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "field": "mqtt_client_id",
+                            "label": "MQTT Client ID",
+                            "type": "text",
+                            "required": false,
+                            "defaultValue": "AUTO",
+                            "help": "Optional static MQTT client ID. Leave as AUTO (or empty) to auto-generate a unique ID per input stanza. Must be unique across all clients connected to the broker."
+                        },
+                        {
+                            "field": "index",
+                            "label": "Index",
+                            "type": "index",
+                            "required": true,
+                            "defaultValue": "default"
+                        },
+                        {
+                            "field": "sourcetype",
+                            "label": "Sourcetype",
+                            "type": "text",
+                            "required": false,
+                            "defaultValue": "mqtt:message",
+                            "help": "Splunk sourcetype applied to every MQTT message event."
+                        },
+                        {
+                            "field": "interval",
+                            "label": "Reconnect Interval (seconds)",
+                            "type": "text",
+                            "required": false,
+                            "defaultValue": "30",
+                            "help": "How long (in seconds) to wait before attempting to reconnect after an unexpected disconnection.",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^[1-9][0-9]*$",
+                                    "errorMsg": "Reconnect interval must be a positive integer."
+                                }
+                            ]
+                        }
+                    ],
+                    "table": {
+                        "header": [
+                            {
+                                "field": "name",
+                                "label": "Name"
+                            },
+                            {
+                                "field": "broker",
+                                "label": "Broker"
+                            },
+                            {
+                                "field": "topic",
+                                "label": "Topic"
+                            },
+                            {
+                                "field": "qos",
+                                "label": "QoS"
+                            },
+                            {
+                                "field": "index",
+                                "label": "Index"
+                            },
+                            {
+                                "field": "interval",
+                                "label": "Reconnect (s)"
+                            }
+                        ],
+                        "moreInfo": [
+                            {
+                                "field": "name",
+                                "label": "Input Name"
+                            },
+                            {
+                                "field": "broker",
+                                "label": "Broker"
+                            },
+                            {
+                                "field": "topic",
+                                "label": "Topic Filter"
+                            },
+                            {
+                                "field": "qos",
+                                "label": "QoS Level"
+                            },
+                            {
+                                "field": "index",
+                                "label": "Index"
+                            },
+                            {
+                                "field": "sourcetype",
+                                "label": "Sourcetype"
+                            },
+                            {
+                                "field": "interval",
+                                "label": "Reconnect Interval"
+                            },
+                            {
+                                "field": "mqtt_client_id",
+                                "label": "MQTT Client ID"
+                            }
+                        ],
+                        "actions": [
+                            "edit",
+                            "delete",
+                            "clone"
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+}
