@@ -13,3 +13,7 @@ services:
     volumes:
       - ./output/TA-MQTT:/opt/splunk/etc/apps/TA-MQTT
       - ./.splunk-persist/TA-MQTT-local:/opt/splunk/etc/apps/TA-MQTT/local
+      - splunk-var:/opt/splunk/var
+
+volumes:
+  splunk-var:
