@@ -5,13 +5,13 @@
     "id": {
       "group": null,
       "name": "TA-MQTT",
-      "version": "1.0.0"
+      "version": "1.0.1"
     },
     "author": [
       {
         "name": "Dominique Dessy",
-        "email": "dominique.dessy@me.com",
-        "company": ""
+        "email": "dodessy@cisco.com",
+        "company": "Cisco"
       }
     ],
     "releaseDate": null,
@@ -30,7 +30,7 @@
       "name": "",
       "url": null
     },
-    "releaseNotes": "* Initial release — multi-broker MQTT subscriber with TLS, mTLS, and skip-verify support."
+    "releaseNotes": "* Patch release: updated Cisco author metadata and improved CI packaging portability/validation for .spl artifacts."
   },
   "dependencies": null,
   "tasks": null,

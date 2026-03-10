@@ -2,6 +2,13 @@
 
 All notable changes to TA-MQTT should be documented in this file.
 
+## [1.0.1] - 2026-03-10
+
+### Changed
+
+- Updated author metadata to Cisco identity (name: Dominique Dessy, email: `dodessy@cisco.com`, company: Cisco).
+- Improved CI `.spl` packaging and root-folder validation compatibility in GitHub Actions.
+
 ## [1.0.0] - 2026-03-10
 
 ### Added
