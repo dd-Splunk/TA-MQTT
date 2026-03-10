@@ -1,14 +1,15 @@
 # TA-MQTT
 
-Splunk Technical Add-on to subscribe to MQTT topics and index messages as JSON events.
+TA-MQTT is a Splunk Technical Add-on that subscribes to MQTT topics and writes
+messages into Splunk with sourcetype `mqtt:message`.
 
-## What It Does
+## Features
 
-- Supports multiple broker definitions
-- Supports anonymous, username/password, TLS, and mTLS connectivity
-- Subscribes with QoS 0/1/2 and wildcard topics
-- Writes MQTT messages to Splunk with sourcetype `mqtt:message`
-- Flattens JSON payload keys so fields are searchable directly
+- Multiple broker definitions
+- Anonymous, username/password, TLS, and mTLS connectivity
+- QoS 0/1/2 subscriptions with wildcard topics
+- JSON event envelope with consistent metadata (`broker`, `mqtt_host`, `topic`, etc.)
+- Search-time payload field extraction for common telemetry keys
 
 ## Quick Start
 
@@ -20,7 +21,20 @@ python -m pip install -r requirements-build.txt
 docker compose up -d
 ```
 
-Then open Splunk Web on `http://localhost:8000`, configure a broker, and create an input.
+Open Splunk Web at `http://localhost:8000`, then configure a broker and create
+an input.
+
+## Rebuild Workflow
+
+When app files are bind-mounted into Docker, always rebuild using a clean output
+directory:
+
+```bash
+docker compose stop splunk
+rm -rf output/TA-MQTT
+./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 1.0.0
+docker compose up -d splunk
+```
 
 ## Documentation
 

@@ -278,7 +278,6 @@ def collect_events(helper, ew) -> None:
     # should only be called from the main thread → use a queue.
     event_q: "queue.Queue[Any]" = queue.Queue(maxsize=10_000)
 
-    connected_evt = threading.Event()
     shutdown_evt = threading.Event()
 
     # ── MQTT callbacks ────────────────────────────────────────────────────
@@ -291,7 +290,6 @@ def collect_events(helper, ew) -> None:
             result, mid = client.subscribe(topic, qos=qos)
             if result != mqtt.MQTT_ERR_SUCCESS:
                 helper.log_error(f"Subscribe call failed: rc={result}")
-            connected_evt.set()
         else:
             reason = {
                 1: "Unacceptable protocol version",
@@ -303,7 +301,6 @@ def collect_events(helper, ew) -> None:
             helper.log_error(f"MQTT connection refused: {reason}")
 
     def on_disconnect(client, userdata, rc):
-        connected_evt.clear()
         if rc == mqtt.MQTT_ERR_SUCCESS:
             helper.log_info("MQTT disconnected cleanly.")
         else:
@@ -414,8 +411,6 @@ def collect_events(helper, ew) -> None:
                     client.disconnect()
                 except Exception:
                     pass
-                connected_evt.clear()
-
             if not shutdown_evt.is_set():
                 helper.log_info(
                     f"Waiting {interval}s before reconnecting to {host}:{port}."

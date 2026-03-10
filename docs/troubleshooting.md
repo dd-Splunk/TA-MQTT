@@ -19,6 +19,17 @@ rm -rf output/TA-MQTT
 
 Then rebuild and start again.
 
+## App does not appear in Splunk launcher
+
+Verify the app visibility flag in `default/app.conf`:
+
+```ini
+[ui]
+is_visible = 1
+```
+
+Using textual booleans can make Splunk REST report the app as non-visible.
+
 ## Add-on UI shows XML parse or REST handler errors
 
 Check app Python path bootstrap in:
@@ -38,17 +49,20 @@ Ensure the add-on `lib` path is included correctly.
 index=* sourcetype="mqtt:message" earliest=-24h | stats count by index sourcetype
 ```
 
-## Duplicate field values
+## Duplicate fields like `field` and `field_`
 
-Current props are tuned to avoid duplicate JSON extraction on new events.
-Older events indexed before these settings may still show duplicated values.
-
-## Quick runtime checks
+This usually indicates overlapping extraction methods. TA-MQTT now uses a single
+search-time path for payload extraction. Confirm active props:
 
 ```bash
 docker exec -u splunk splunk /opt/splunk/bin/splunk btool props list mqtt:message --debug
 ```
 
+If duplicates remain, run a fresh search window (`earliest=-15m`) to avoid stale
+field discovery from old events.
+
+## Quick runtime checks
+
 ```bash
-docker exec -u splunk splunk /opt/splunk/bin/splunk btool transforms list --debug | grep mqtt_payload
+docker exec -u splunk splunk /opt/splunk/bin/splunk btool props list mqtt:message --debug
 ```
