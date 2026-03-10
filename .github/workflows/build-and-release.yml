@@ -11,6 +11,7 @@ on:
         branches:
             - main
             - develop
+    workflow_dispatch:
 
 concurrency:
     group: ta-mqtt-${{ github.workflow }}-${{ github.ref }}
@@ -113,10 +114,14 @@ jobs:
               shell: bash
               run: |
                   set -euo pipefail
+                  if [[ ! -d output/TA-MQTT ]]; then
+                    echo "Build output directory output/TA-MQTT not found." >&2
+                    exit 1
+                  fi
                   mkdir -p dist
                   SPL_NAME="TA-MQTT-${APP_VERSION}.spl"
                   tar -czf "dist/${SPL_NAME}" -C output TA-MQTT
-                  if ! tar -tzf "dist/${SPL_NAME}" | grep -q '^TA-MQTT/'; then
+                  if ! tar -tzf "dist/${SPL_NAME}" | grep -Eq '^(\./)?TA-MQTT/'; then
                     echo "Package validation failed: TA-MQTT/ root missing." >&2
                     exit 1
                   fi
@@ -135,7 +140,7 @@ jobs:
               uses: actions/upload-artifact@v4
               with:
                   name: ta-mqtt-spl
-                  path: dist/*.spl
+                  path: dist/${{ steps.package.outputs.spl_name }}
                   retention-days: 30
 
     release_latest:
