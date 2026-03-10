@@ -71,7 +71,14 @@
                             "label": "Username",
                             "type": "text",
                             "required": false,
-                            "help": "MQTT username. Leave empty for anonymous access."
+                            "help": "MQTT username. Leave empty for anonymous access.",
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "maxLength": 255,
+                                    "errorMsg": "Username must be 255 characters or fewer."
+                                }
+                            ]
                         },
                         {
                             "field": "password",
@@ -79,7 +86,14 @@
                             "type": "text",
                             "required": false,
                             "encrypted": true,
-                            "help": "MQTT password. Leave empty for anonymous access."
+                            "help": "MQTT password. Leave empty for anonymous access.",
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "maxLength": 255,
+                                    "errorMsg": "Password must be 255 characters or fewer."
+                                }
+                            ]
                         },
                         {
                             "field": "use_tls",
@@ -106,7 +120,14 @@
                                 "rowsMin": 5,
                                 "rowsMax": 20
                             },
-                            "help": "Optional. PEM-encoded CA certificate used to verify the broker's server certificate. If empty, the system trust store is used. Ignored when 'Skip TLS Certificate Verification' is checked."
+                            "help": "Optional. PEM-encoded CA certificate used to verify the broker's server certificate. If empty, the system trust store is used. Ignored when 'Skip TLS Certificate Verification' is checked.",
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "maxLength": 20000,
+                                    "errorMsg": "CA certificate must be 20000 characters or fewer."
+                                }
+                            ]
                         },
                         {
                             "field": "client_cert",
@@ -117,7 +138,14 @@
                                 "rowsMin": 5,
                                 "rowsMax": 20
                             },
-                            "help": "Optional. PEM-encoded client certificate for mutual TLS (mTLS) authentication. Must be provided together with the Client Private Key."
+                            "help": "Optional. PEM-encoded client certificate for mutual TLS (mTLS) authentication. Must be provided together with the Client Private Key.",
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "maxLength": 20000,
+                                    "errorMsg": "Client certificate must be 20000 characters or fewer."
+                                }
+                            ]
                         },
                         {
                             "field": "client_key",
@@ -129,7 +157,14 @@
                                 "rowsMin": 5,
                                 "rowsMax": 20
                             },
-                            "help": "Optional. PEM-encoded private key corresponding to the client certificate. Stored encrypted. Must be provided together with the Client Certificate."
+                            "help": "Optional. PEM-encoded private key corresponding to the client certificate. Stored encrypted. Must be provided together with the Client Certificate.",
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "maxLength": 20000,
+                                    "errorMsg": "Client private key must be 20000 characters or fewer."
+                                }
+                            ]
                         }
                     ],
                     "table": {
@@ -173,6 +208,13 @@
                             "required": false,
                             "defaultValue": "INFO",
                             "help": "Controls the verbosity of the add-on's log output.",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$",
+                                    "errorMsg": "Log Level must be one of DEBUG, INFO, WARNING, ERROR, or CRITICAL."
+                                }
+                            ],
                             "options": {
                                 "disableonEdit": false,
                                 "autoCompleteFields": [
@@ -236,6 +278,13 @@
                             "type": "singleSelect",
                             "required": true,
                             "help": "Select a broker connection defined on the Configuration page.",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+                                    "errorMsg": "MQTT Broker must reference a valid broker name."
+                                }
+                            ],
                             "options": {
                                 "endpointUrl": "TA_MQTT_mqtt_broker"
                             }
@@ -263,6 +312,13 @@
                             "required": true,
                             "defaultValue": "0",
                             "help": "MQTT delivery guarantee. QoS 0 = fire-and-forget, QoS 1 = at least once, QoS 2 = exactly once.",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^[012]$",
+                                    "errorMsg": "QoS must be 0, 1, or 2."
+                                }
+                            ],
                             "options": {
                                 "autoCompleteFields": [
                                     {
@@ -286,7 +342,14 @@
                             "type": "text",
                             "required": false,
                             "defaultValue": "AUTO",
-                            "help": "Optional static MQTT client ID. Leave as AUTO (or empty) to auto-generate a unique ID per input stanza. Must be unique across all clients connected to the broker."
+                            "help": "Optional static MQTT client ID. Leave as AUTO (or empty) to auto-generate a unique ID per input stanza. Must be unique across all clients connected to the broker.",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^$|^AUTO$|^[a-zA-Z0-9_-]{1,128}$",
+                                    "errorMsg": "MQTT Client ID must be empty, AUTO, or 1-128 characters using only letters, digits, underscore, or dash."
+                                }
+                            ]
                         },
                         {
                             "field": "index",
@@ -301,7 +364,14 @@
                             "type": "text",
                             "required": false,
                             "defaultValue": "mqtt:message",
-                            "help": "Splunk sourcetype applied to every MQTT message event."
+                            "help": "Splunk sourcetype applied to every MQTT message event.",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^$|^[a-zA-Z0-9:._-]{1,200}$",
+                                    "errorMsg": "Sourcetype must be empty or 1-200 characters using letters, digits, colon, dot, underscore, or dash."
+                                }
+                            ]
                         },
                         {
                             "field": "interval",
