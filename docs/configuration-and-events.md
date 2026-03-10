@@ -37,20 +37,43 @@ TA-MQTT writes JSON events with standard metadata plus payload:
   "broker": "mc",
   "host": "192.168.1.21",
   "port": 1883,
-  "topic": "home/devices/abc/telemetry",
+  "topic": "home/devices/0123549ADEAA1D11EE/telemetry",
   "qos": 0,
   "retain": false,
   "payload": {
-    "temperature_celsius": 26.1,
-    "humidity_percent": 49.0
+    "temperature_celsius": 26.4,
+    "humidity_percent": 47.9,
+    "pressure_millibar": 1013.1,
+    "illuminance_lux": 19.4,
+    "uv_index": 0.0,
+    "timestamp": 1773137303,
+    "v": 1
   },
-  "temperature_celsius": 26.1,
-  "humidity_percent": 49.0
+  "temperature_celsius": 26.4,
+  "humidity_percent": 47.9,
+  "pressure_millibar": 1013.1,
+  "illuminance_lux": 19.4,
+  "uv_index": 0.0,
+  "timestamp": 1773137303,
+  "v": 1
 }
 ```
 
 If payload is valid JSON, payload keys are flattened to top-level fields for direct search.
 If payload is not JSON, `payload` remains a string.
+
+## Field Naming Notes
+
+- For JSON payloads, both styles are available:
+- Top-level flattened fields, for example `temperature_celsius`
+- Namespaced payload fields, for example `payload.temperature_celsius`
+- For scalar/non-JSON payloads, only `payload` is populated as a string.
+- Top-level flattened fields do not overwrite reserved envelope keys (`broker`, `host`, `port`, `topic`, `qos`, `retain`, `payload`).
+
+## Search Behavior Notes
+
+- Depending on field extraction path, some fields may appear multivalue in results.
+- To force single-value display, use `mvindex(field, 0)`.
 
 ## Search Examples
 
@@ -60,6 +83,12 @@ index=main sourcetype="mqtt:message"
 ```
 
 ```spl
+index=main sourcetype="mqtt:message" topic="home/devices/0123549ADEAA1D11EE/telemetry"
+| eval temperature_celsius=mvindex(temperature_celsius,0), humidity_percent=mvindex(humidity_percent,0)
+| table _time topic temperature_celsius humidity_percent pressure_millibar illuminance_lux uv_index v
+```
+
+```spl
 index=main sourcetype="mqtt:message" topic="verify/dedup"
-| table _time topic temp humidity ok state sensor_id
+| table _time topic payload.temp payload.humidity payload.ok payload.state payload.sensor_id
 ```
