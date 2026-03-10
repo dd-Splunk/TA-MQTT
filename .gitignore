@@ -51,5 +51,6 @@ htmlcov/
 .idea/
 
 # Project-generated artifacts
-output/
+output/*
+!output/.gitkeep
 .splunk-persist/
