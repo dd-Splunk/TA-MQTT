@@ -325,6 +325,15 @@ def collect_events(helper, ew) -> None:
         except (UnicodeDecodeError, AttributeError):
             payload_str = msg.payload.hex() if msg.payload else ""
 
+        # Keep payload structured when it is valid JSON; otherwise preserve
+        # the original string so non-JSON payloads are still searchable.
+        payload_value: Any = payload_str
+        if payload_str:
+            try:
+                payload_value = json.loads(payload_str)
+            except (ValueError, TypeError):
+                payload_value = payload_str
+
         event_dict = {
             "broker": broker_name,
             "host": host,
@@ -332,8 +341,16 @@ def collect_events(helper, ew) -> None:
             "topic": msg.topic,
             "qos": msg.qos,
             "retain": bool(msg.retain),
-            "payload": payload_str,
+            "payload": payload_value,
         }
+
+        # Flatten JSON payload keys into top-level fields so searches can use
+        # direct names (for example, temp instead of payload.temp).
+        if isinstance(payload_value, dict):
+            reserved_keys = set(event_dict.keys())
+            for k, v in payload_value.items():
+                if isinstance(k, str) and k and k not in reserved_keys:
+                    event_dict[k] = v
         try:
             event_q.put_nowait(event_dict)
         except queue.Full:
