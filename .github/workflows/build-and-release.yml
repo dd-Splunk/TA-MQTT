@@ -120,8 +120,11 @@ jobs:
                   fi
                   mkdir -p dist
                   SPL_NAME="TA-MQTT-${APP_VERSION}.spl"
-                  # Downstream validators expect TA_MQTT as archive root.
-                  tar -czf "dist/${SPL_NAME}" -C output --transform 's,^TA-MQTT,TA_MQTT,' TA-MQTT
+                  STAGE_DIR=$(mktemp -d)
+                  mkdir -p "${STAGE_DIR}/TA_MQTT"
+                  cp -R output/TA-MQTT/. "${STAGE_DIR}/TA_MQTT/"
+                  tar -czf "dist/${SPL_NAME}" -C "${STAGE_DIR}" TA_MQTT
+                  rm -rf "${STAGE_DIR}"
                   if ! tar -tzf "dist/${SPL_NAME}" | grep -Eq '^(\./)?TA_MQTT/'; then
                     echo "Package validation failed: TA_MQTT/ root is missing." >&2
                     exit 1
