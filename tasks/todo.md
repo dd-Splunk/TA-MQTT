@@ -55,6 +55,7 @@
 - [x] Validate JMeter publish load against the local Mosquitto service in `compose.yml`
 - [x] Add a fixed sustained-load JMeter scenario alongside the smoke plan
 - [x] Reconcile sustained-run JMeter publish counts with TA runtime summaries in Splunk
+- [x] Add dedicated JMeter plan templates for TLS and mTLS publisher validation
 - [ ] Match Python load-generator coverage for QoS, auth, TLS, and mTLS
 - [ ] Decide whether to automate the JMeter path outside the current add-on CI pipeline
 - [ ] Remove `tools/mqtt_load_test.py` only after documented parity and contributor usability are confirmed
