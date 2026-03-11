@@ -5,7 +5,7 @@
 Use the virtual environment binary directly:
 
 ```bash
-./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 1.0.0
+./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 1.1.0
 ```
 
 ## Build fails when `output/TA-MQTT` already exists
@@ -48,6 +48,38 @@ Ensure the add-on `lib` path is included correctly.
 ```spl
 index=* sourcetype="mqtt:message" earliest=-24h | stats count by index sourcetype
 ```
+
+## MQTT input appears slow or drops messages
+
+The modular input now emits periodic runtime summary lines into `splunkd.log`.
+Look for messages starting with `MQTT runtime summary`.
+
+Useful fields:
+
+- `recv_delta`: messages received from the broker during the summary window
+- `written_delta`: messages successfully written to Splunk during the window
+- `dropped_delta`: messages dropped because the in-memory queue was full
+- `reconnect_delta`: reconnect attempts during the window
+- `queue_depth`: queue depth at the moment of logging
+- `queue_high_water`: highest observed queue depth since process start
+- `lag_avg_ms`: average enqueue-to-write delay in milliseconds for the window
+- `lag_max_ms`: worst enqueue-to-write delay in milliseconds for the window
+- `idle_for_s`: seconds since the last successful event write
+- `last_dropped_topic`: most recent topic name dropped due to queue pressure
+
+How to interpret them:
+
+- High `recv_delta` with lower `written_delta` means the writer path is falling behind.
+- Rising `queue_high_water` means sustained pressure even if `dropped_delta` is still zero.
+- Non-zero `dropped_delta` means the input has exceeded its current throughput capacity.
+- High `lag_avg_ms` or `lag_max_ms` means events are waiting in the queue too long before being written.
+- Repeated `reconnect_delta` increases suggest broker instability or connection churn.
+
+If queue pressure is visible:
+
+1. Reduce topic breadth or message volume for the stanza.
+2. Spread load across more input stanzas or forwarders if operationally acceptable.
+3. Check Splunk host CPU and I/O pressure before assuming the broker is the bottleneck.
 
 ## Duplicate fields like `field` and `field_`
 
