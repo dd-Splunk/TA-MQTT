@@ -5,9 +5,31 @@ This guide covers two things:
 - how to generate MQTT publish load from Ubuntu
 - which Splunk dashboard panels to use when diagnosing TA-MQTT performance issues
 
+The current local development stack already includes a Mosquitto broker in
+`docker compose`, so the default local target for smoke and load testing is
+`localhost:1883`.
+
+## Current Runtime Model
+
+The performance metrics in this guide map directly to the implemented runtime:
+
+- one modular-input process per stanza
+- one paho-mqtt client per stanza
+- one bounded in-memory queue between MQTT callbacks and Splunk writes
+- blocking queue reads with bounded drain batches
+- 60-second runtime summary logs emitted by the input process
+
 ## Ubuntu Load Test Script
 
 Use [tools/mqtt_load_test.py](../tools/mqtt_load_test.py).
+
+The script supports:
+
+- configurable client count, rate, duration, payload size, and QoS
+- username/password authentication
+- TLS and mTLS options
+- JSON or text payload generation
+- periodic progress reporting plus a final summary
 
 Prerequisites on Ubuntu:
 
@@ -54,6 +76,18 @@ What the script reports:
 - `connect_errors`: clients that failed initial connection
 - `disconnects`: unexpected disconnects observed during the run
 - `actual_rate_msgs_per_s`: achieved publish rate across all clients
+
+For the bundled local Compose stack, a basic smoke test looks like this:
+
+```bash
+python3 tools/mqtt_load_test.py \
+  --host localhost \
+  --port 1883 \
+  --topic perf/ta-mqtt/test \
+  --clients 1 \
+  --rate 10 \
+  --duration 10
+```
 
 ## Recommended Dashboard
 
