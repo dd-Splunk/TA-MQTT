@@ -48,3 +48,13 @@
 - [ ] Review queue backpressure behaviour under high-throughput topics
 - [ ] Consider extracting payload JSON sub-fields with a custom props.conf
 - [ ] Publish to Splunkbase (optional)
+
+## Phase 6 — JMeter migration
+
+- [x] Stand up repo-local JMeter starter assets using the EMQX/XMeter MQTT plugin
+- [x] Validate JMeter publish load against the local Mosquitto service in `compose.yml`
+- [x] Add a fixed sustained-load JMeter scenario alongside the smoke plan
+- [x] Reconcile sustained-run JMeter publish counts with TA runtime summaries in Splunk
+- [ ] Match Python load-generator coverage for QoS, auth, TLS, and mTLS
+- [ ] Decide whether to automate the JMeter path outside the current add-on CI pipeline
+- [ ] Remove `tools/mqtt_load_test.py` only after documented parity and contributor usability are confirmed

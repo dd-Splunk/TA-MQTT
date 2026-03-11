@@ -1,0 +1,17 @@
+# Copy values into a local properties file or override them with -J flags.
+
+mqtt.host=localhost
+mqtt.port=1883
+mqtt.version=3.1.1
+mqtt.protocol=TCP
+mqtt.client_name=hivemq
+mqtt.topic=perf/ta-mqtt/test
+mqtt.qos=0
+mqtt.clients=1
+mqtt.loops=100
+mqtt.ramp_up=1
+mqtt.payload_bytes=512
+mqtt.username=
+mqtt.password=
+mqtt.client_id_prefix=ta-mqtt-jmeter-
+mqtt.keep_alive=60
