@@ -19,7 +19,7 @@ python -m pip install -r requirements-build.txt
 ## Build the Add-on
 
 ```bash
-./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 1.0.0
+./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 1.1.0
 ```
 
 Output is generated at `output/TA-MQTT/`.
@@ -49,7 +49,7 @@ Use this exact sequence after source changes:
 ```bash
 docker compose stop splunk
 rm -rf output/TA-MQTT
-./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 1.0.0
+./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 1.1.0
 docker compose up -d splunk
 ```
 

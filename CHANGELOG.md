@@ -2,6 +2,13 @@
 
 All notable changes to TA-MQTT should be documented in this file.
 
+## [1.1.0] - 2026-03-11
+
+### Changed
+
+- Added MQTT runtime summary instrumentation for queue depth, lag, drops, reconnects, and write throughput visibility.
+- Replaced the fixed 50 ms local queue polling loop with blocking queue reads and bounded draining to reduce idle overhead.
+
 ## [1.0.1] - 2026-03-10
 
 ### Changed
