@@ -43,6 +43,7 @@ docker compose up -d splunk
 - [Setup and Build](docs/setup-and-build.md)
 - [Configuration and Events](docs/configuration-and-events.md)
 - [Troubleshooting](docs/troubleshooting.md)
+- [Performance Testing](docs/performance-testing.md)
 
 ## CI/CD and Releases
 

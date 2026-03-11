@@ -1,0 +1,184 @@
+# Performance Testing
+
+This guide covers two things:
+
+- how to generate MQTT publish load from Ubuntu
+- which Splunk dashboard panels to use when diagnosing TA-MQTT performance issues
+
+## Ubuntu Load Test Script
+
+Use [tools/mqtt_load_test.py](../tools/mqtt_load_test.py).
+
+Prerequisites on Ubuntu:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y python3 python3-pip python3-venv
+python3 -m pip install --user paho-mqtt
+```
+
+Example burst test:
+
+```bash
+python3 tools/mqtt_load_test.py \
+  --host 127.0.0.1 \
+  --port 1883 \
+  --topic perf/ta-mqtt/test \
+  --clients 4 \
+  --rate 500 \
+  --duration 60 \
+  --payload-bytes 512 \
+  --qos 0
+```
+
+Example TLS test:
+
+```bash
+python3 tools/mqtt_load_test.py \
+  --host mqtt.example.local \
+  --port 8883 \
+  --topic perf/ta-mqtt/tls \
+  --clients 2 \
+  --rate 100 \
+  --duration 120 \
+  --payload-bytes 1024 \
+  --tls \
+  --ca-file ca.pem
+```
+
+What the script reports:
+
+- `attempted`: publish attempts made by all clients
+- `published`: publishes that returned success from the client library
+- `publish_errors`: publish calls that failed
+- `connect_errors`: clients that failed initial connection
+- `disconnects`: unexpected disconnects observed during the run
+- `actual_rate_msgs_per_s`: achieved publish rate across all clients
+
+## Recommended Dashboard
+
+Build one dashboard from `_internal` logs for TA runtime health and one panel from indexed MQTT data for end-to-end confirmation.
+
+Base search for runtime health:
+
+```spl
+index=_internal source="/opt/splunk/var/log/splunk/ta_mqtt_mqtt_subscriber.log" "MQTT runtime summary"
+```
+
+Field extraction block:
+
+```spl
+index=_internal source="/opt/splunk/var/log/splunk/ta_mqtt_mqtt_subscriber.log" "MQTT runtime summary"
+| rex "broker=(?<broker>'[^']+'|\"[^\"]+\"|\\S+)"
+| rex "recv_delta=(?<recv_delta>\d+)"
+| rex "written_delta=(?<written_delta>\d+)"
+| rex "dropped_delta=(?<dropped_delta>\d+)"
+| rex "reconnect_delta=(?<reconnect_delta>\d+)"
+| rex "queue_depth=(?<queue_depth>-?\d+)"
+| rex "queue_high_water=(?<queue_high_water>\d+)"
+| rex "lag_avg_ms=(?<lag_avg_ms>[0-9.]+)"
+| rex "lag_max_ms=(?<lag_max_ms>[0-9.]+)"
+| eval broker=trim(replace(broker,"^['\"]|['\"]$",""))
+| eval recv_delta=tonumber(recv_delta), written_delta=tonumber(written_delta), dropped_delta=tonumber(dropped_delta), reconnect_delta=tonumber(reconnect_delta), queue_depth=tonumber(queue_depth), queue_high_water=tonumber(queue_high_water), lag_avg_ms=tonumber(lag_avg_ms), lag_max_ms=tonumber(lag_max_ms)
+| eval backlog_delta=recv_delta-written_delta
+```
+
+Recommended panels:
+
+1. Broker Health Table
+
+```spl
+index=_internal source="/opt/splunk/var/log/splunk/ta_mqtt_mqtt_subscriber.log" "MQTT runtime summary"
+| rex "broker=(?<broker>'[^']+'|\"[^\"]+\"|\\S+)"
+| rex "recv_delta=(?<recv_delta>\d+)"
+| rex "written_delta=(?<written_delta>\d+)"
+| rex "dropped_delta=(?<dropped_delta>\d+)"
+| rex "reconnect_delta=(?<reconnect_delta>\d+)"
+| rex "queue_depth=(?<queue_depth>-?\d+)"
+| rex "queue_high_water=(?<queue_high_water>\d+)"
+| rex "lag_avg_ms=(?<lag_avg_ms>[0-9.]+)"
+| rex "lag_max_ms=(?<lag_max_ms>[0-9.]+)"
+| eval broker=trim(replace(broker,"^['\"]|['\"]$",""))
+| eval recv_delta=tonumber(recv_delta), written_delta=tonumber(written_delta), dropped_delta=tonumber(dropped_delta), reconnect_delta=tonumber(reconnect_delta), queue_depth=tonumber(queue_depth), queue_high_water=tonumber(queue_high_water), lag_avg_ms=tonumber(lag_avg_ms), lag_max_ms=tonumber(lag_max_ms)
+| eval backlog_delta=recv_delta-written_delta
+| stats sum(recv_delta) as recv sum(written_delta) as written sum(backlog_delta) as backlog sum(dropped_delta) as dropped sum(reconnect_delta) as reconnects max(queue_high_water) as max_queue_high_water avg(lag_avg_ms) as avg_lag_ms max(lag_max_ms) as max_lag_ms by broker
+| eval backlog_ratio=if(recv>0, round(backlog/recv, 3), 0)
+| eval health=case(
+    dropped>0, "critical",
+    reconnects>0, "critical",
+    backlog_ratio>=0.05, "high",
+    max_queue_high_water>=100, "high",
+    max_lag_ms>=1000, "high",
+    avg_lag_ms>=250, "warning",
+    true(), "ok"
+  )
+| sort 0 - dropped - reconnects - backlog_ratio - max_lag_ms
+```
+
+1. Throughput vs Backlog Timechart
+
+```spl
+index=_internal source="/opt/splunk/var/log/splunk/ta_mqtt_mqtt_subscriber.log" "MQTT runtime summary"
+| rex "recv_delta=(?<recv_delta>\d+)"
+| rex "written_delta=(?<written_delta>\d+)"
+| eval recv_delta=tonumber(recv_delta), written_delta=tonumber(written_delta)
+| eval backlog_delta=recv_delta-written_delta
+| timechart span=1m sum(recv_delta) as recv sum(written_delta) as written sum(backlog_delta) as backlog
+```
+
+1. Queue Pressure Timechart
+
+```spl
+index=_internal source="/opt/splunk/var/log/splunk/ta_mqtt_mqtt_subscriber.log" "MQTT runtime summary"
+| rex "queue_depth=(?<queue_depth>-?\d+)"
+| rex "queue_high_water=(?<queue_high_water>\d+)"
+| eval queue_depth=tonumber(queue_depth), queue_high_water=tonumber(queue_high_water)
+| timechart span=1m max(queue_depth) as queue_depth max(queue_high_water) as queue_high_water
+```
+
+1. Lag Timechart
+
+```spl
+index=_internal source="/opt/splunk/var/log/splunk/ta_mqtt_mqtt_subscriber.log" "MQTT runtime summary"
+| rex "lag_avg_ms=(?<lag_avg_ms>[0-9.]+)"
+| rex "lag_max_ms=(?<lag_max_ms>[0-9.]+)"
+| eval lag_avg_ms=tonumber(lag_avg_ms), lag_max_ms=tonumber(lag_max_ms)
+| timechart span=1m avg(lag_avg_ms) as lag_avg_ms max(lag_max_ms) as lag_max_ms
+```
+
+1. Drops and Reconnects Timechart
+
+```spl
+index=_internal source="/opt/splunk/var/log/splunk/ta_mqtt_mqtt_subscriber.log" "MQTT runtime summary"
+| rex "dropped_delta=(?<dropped_delta>\d+)"
+| rex "reconnect_delta=(?<reconnect_delta>\d+)"
+| eval dropped_delta=tonumber(dropped_delta), reconnect_delta=tonumber(reconnect_delta)
+| timechart span=1m sum(dropped_delta) as dropped sum(reconnect_delta) as reconnects
+```
+
+1. End-to-End Indexed Event Volume
+
+```spl
+index=* sourcetype="mqtt:message" earliest=-15m
+| timechart span=1m count as indexed_events by topic limit=10
+```
+
+## Suggested Thresholds
+
+For aggressive performance tests, treat the following as failure indicators:
+
+- any `dropped_delta > 0`
+- any `reconnect_delta > 0` unless the test intentionally restarts the broker
+- `backlog_ratio >= 0.05`
+- `lag_max_ms >= 1000`
+- `avg_lag_ms >= 250`
+- `queue_high_water >= 100`
+
+## Test Workflow
+
+1. Start Splunk and enable the TA-MQTT input.
+2. Start the Ubuntu load generator.
+3. Watch the dashboard during the run.
+4. Compare the script's achieved publish rate with TA runtime `written` rate.
+5. Record lag, queue growth, and any drops or reconnects.
+6. Repeat with increasing `--rate`, `--clients`, and `--payload-bytes` until the first failure signal appears.
