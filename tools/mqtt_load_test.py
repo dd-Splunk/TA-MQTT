@@ -156,14 +156,15 @@ def publisher_worker(
     stats: PublisherStats,
 ) -> None:
     client = mqtt.Client(
+        callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
         client_id=f"{args.client_prefix}-{publisher_id}", clean_session=True
     )
     if args.username:
         client.username_pw_set(args.username, args.password or None)
     configure_tls(client, args)
 
-    def on_disconnect(_client, _userdata, rc):
-        if rc != mqtt.MQTT_ERR_SUCCESS:
+    def on_disconnect(_client, _userdata, _disconnect_flags, reason_code, _properties):
+        if reason_code != mqtt.MQTT_ERR_SUCCESS:
             stats.incr("disconnects")
 
     client.on_disconnect = on_disconnect
