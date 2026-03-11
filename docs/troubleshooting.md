@@ -51,8 +51,15 @@ index=* sourcetype="mqtt:message" earliest=-24h | stats count by index sourcetyp
 
 ## MQTT input appears slow or drops messages
 
-The modular input now emits periodic runtime summary lines into `splunkd.log`.
+The modular input emits periodic runtime summary lines into the TA-specific log
+file at `/opt/splunk/var/log/splunk/ta_mqtt_mqtt_subscriber.log`.
 Look for messages starting with `MQTT runtime summary`.
+
+Example local inspection:
+
+```bash
+docker compose exec -T --user 0 splunk bash -lc "tail -n 50 /opt/splunk/var/log/splunk/ta_mqtt_mqtt_subscriber.log"
+```
 
 Useful fields:
 
@@ -80,6 +87,32 @@ If queue pressure is visible:
 1. Reduce topic breadth or message volume for the stanza.
 2. Spread load across more input stanzas or forwarders if operationally acceptable.
 3. Check Splunk host CPU and I/O pressure before assuming the broker is the bottleneck.
+
+## Input fails with broker not found
+
+If the log shows an error similar to `Broker '<name>' not found in ta_mqtt_mqtt_broker.conf`,
+the input stanza references a broker name that does not exist in the broker
+configuration set.
+
+Verify that:
+
+1. The broker was created on `Configuration > MQTT Brokers`.
+2. The input's `broker` field matches the broker stanza name exactly.
+3. Local Docker test config under `.splunk-persist/TA-MQTT-local/` is consistent if you are bind-mounting local configs.
+
+## Local Docker broker does not accept connections
+
+The local Compose stack uses Mosquitto with configuration mounted from
+`tools/mosquitto.conf`.
+
+Check service state with:
+
+```bash
+docker compose ps
+docker compose logs --tail 50 mosquitto
+```
+
+The expected local endpoint is `localhost:1883`.
 
 ## Duplicate fields like `field` and `field_`
 
