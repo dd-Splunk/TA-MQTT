@@ -129,7 +129,7 @@
             <value>120000.0</value>
             <savedValue>120000.0</savedValue>
           </doubleProp>
-          <intProp name="calcMode">1</intProp>
+          <intProp name="calcMode">0</intProp>
         </ConstantThroughputTimer>
         <hashTree/>
         <net.xmeter.samplers.PubSampler guiclass="net.xmeter.gui.PubSamplerUI" testclass="net.xmeter.samplers.PubSampler" testname="MQTT Publish" enabled="true">
