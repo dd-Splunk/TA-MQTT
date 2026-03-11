@@ -8,10 +8,13 @@ All notable changes to TA-MQTT should be documented in this file.
 
 - Added a local Mosquitto service in Docker Compose for repeatable add-on testing.
 - Added an Ubuntu-friendly MQTT load generator and performance testing guide.
+- Added repo-local JMeter MQTT publisher assets (`tools/jmeter/`) with starter and sustained non-GUI plans.
+- Added dedicated JMeter TLS and mTLS publisher plan templates for Phase 6 parity work.
 
 ### Changed in 1.2.0
 
 - Updated the load generator to use `paho-mqtt` callback API v2 to remove deprecation warnings.
+- Updated performance and setup documentation to make JMeter the preferred load path while keeping the Python generator as fallback.
 
 ## [1.1.0] - 2026-03-11
 
