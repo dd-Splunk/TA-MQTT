@@ -49,6 +49,10 @@ logger = logging.getLogger(__name__)
 # ───────────────────────────────────────────────────────────────────────────
 
 _TRUTHY = {"1", "true", "yes", "on"}
+_HEALTH_LOG_INTERVAL_SECS = 60.0
+_QUEUE_GET_TIMEOUT_SECS = 1.0
+_QUEUE_DRAIN_BATCH_SIZE = 200
+_DROP_WARNING_INTERVAL_SECS = 30.0
 
 
 def _is_true(value: Any) -> bool:
@@ -276,9 +280,158 @@ def collect_events(helper, ew) -> None:
     # ── Thread-safe event queue ───────────────────────────────────────────
     # MQTT callbacks run in paho's network thread; Splunk's ew.write_event()
     # should only be called from the main thread → use a queue.
-    event_q: "queue.Queue[Any]" = queue.Queue(maxsize=10_000)
+    event_q: "queue.Queue[Tuple[float, Dict[str, Any]]]" = queue.Queue(maxsize=10_000)
 
     shutdown_evt = threading.Event()
+    stats_lock = threading.Lock()
+    runtime_stats: Dict[str, Any] = {
+        "messages_received": 0,
+        "messages_written": 0,
+        "messages_dropped": 0,
+        "reconnect_attempts": 0,
+        "queue_high_water": 0,
+        "last_write_monotonic": None,
+        "last_health_log": time.monotonic(),
+        "last_logged_received": 0,
+        "last_logged_written": 0,
+        "last_logged_dropped": 0,
+        "last_logged_reconnects": 0,
+        "lag_window_count": 0,
+        "lag_window_sum": 0.0,
+        "lag_window_max": 0.0,
+        "last_drop_warning": 0.0,
+        "suppressed_drop_warnings": 0,
+        "last_dropped_topic": None,
+    }
+
+    def _safe_qsize() -> int:
+        try:
+            return event_q.qsize()
+        except NotImplementedError:
+            return -1
+
+    def _update_queue_high_water(queue_depth: int) -> None:
+        if queue_depth < 0:
+            return
+        with stats_lock:
+            runtime_stats["queue_high_water"] = max(
+                runtime_stats["queue_high_water"], queue_depth
+            )
+
+    def _record_write(lag_seconds: float) -> None:
+        now_monotonic = time.monotonic()
+        with stats_lock:
+            runtime_stats["messages_written"] += 1
+            runtime_stats["lag_window_count"] += 1
+            runtime_stats["lag_window_sum"] += lag_seconds
+            runtime_stats["lag_window_max"] = max(
+                runtime_stats["lag_window_max"], lag_seconds
+            )
+            runtime_stats["last_write_monotonic"] = now_monotonic
+
+    def _record_reconnect_attempt() -> None:
+        with stats_lock:
+            runtime_stats["reconnect_attempts"] += 1
+
+    def _log_drop_warning(topic_name: str) -> None:
+        now_monotonic = time.monotonic()
+        with stats_lock:
+            runtime_stats["messages_dropped"] += 1
+            runtime_stats["last_dropped_topic"] = topic_name
+            should_log = (
+                now_monotonic - runtime_stats["last_drop_warning"]
+                >= _DROP_WARNING_INTERVAL_SECS
+            )
+            suppressed = runtime_stats["suppressed_drop_warnings"]
+            if should_log:
+                runtime_stats["last_drop_warning"] = now_monotonic
+                runtime_stats["suppressed_drop_warnings"] = 0
+                queue_high_water = runtime_stats["queue_high_water"]
+            else:
+                runtime_stats["suppressed_drop_warnings"] += 1
+                queue_high_water = None
+                suppressed = None
+        if should_log:
+            suppressed_suffix = f" suppressed={suppressed}" if suppressed else ""
+            helper.log_warning(
+                "Event queue is full; dropping MQTT message on "
+                f"topic={topic_name!r}.{suppressed_suffix} "
+                f"queue_high_water={queue_high_water}. Consider increasing "
+                "throughput or reducing topic breadth."
+            )
+
+    def _maybe_log_health(force: bool = False) -> None:
+        now_monotonic = time.monotonic()
+        queue_depth = _safe_qsize()
+        if queue_depth >= 0:
+            _update_queue_high_water(queue_depth)
+
+        with stats_lock:
+            if (
+                not force
+                and now_monotonic - runtime_stats["last_health_log"]
+                < _HEALTH_LOG_INTERVAL_SECS
+            ):
+                return
+
+            received_delta = (
+                runtime_stats["messages_received"]
+                - runtime_stats["last_logged_received"]
+            )
+            written_delta = (
+                runtime_stats["messages_written"] - runtime_stats["last_logged_written"]
+            )
+            dropped_delta = (
+                runtime_stats["messages_dropped"] - runtime_stats["last_logged_dropped"]
+            )
+            reconnect_delta = (
+                runtime_stats["reconnect_attempts"]
+                - runtime_stats["last_logged_reconnects"]
+            )
+
+            lag_count = runtime_stats["lag_window_count"]
+            lag_avg_ms = (
+                (runtime_stats["lag_window_sum"] / lag_count) * 1000.0
+                if lag_count
+                else 0.0
+            )
+            lag_max_ms = runtime_stats["lag_window_max"] * 1000.0
+            last_write_monotonic = runtime_stats["last_write_monotonic"]
+            queue_high_water = runtime_stats["queue_high_water"]
+            last_dropped_topic = runtime_stats["last_dropped_topic"]
+
+            runtime_stats["last_health_log"] = now_monotonic
+            runtime_stats["last_logged_received"] = runtime_stats["messages_received"]
+            runtime_stats["last_logged_written"] = runtime_stats["messages_written"]
+            runtime_stats["last_logged_dropped"] = runtime_stats["messages_dropped"]
+            runtime_stats["last_logged_reconnects"] = runtime_stats[
+                "reconnect_attempts"
+            ]
+            runtime_stats["lag_window_count"] = 0
+            runtime_stats["lag_window_sum"] = 0.0
+            runtime_stats["lag_window_max"] = 0.0
+
+        idle_seconds = (
+            now_monotonic - last_write_monotonic
+            if last_write_monotonic is not None
+            else None
+        )
+        idle_fragment = (
+            f" idle_for_s={idle_seconds:.2f}" if idle_seconds is not None else ""
+        )
+        drop_fragment = (
+            f" last_dropped_topic={last_dropped_topic!r}"
+            if last_dropped_topic is not None
+            else ""
+        )
+        helper.log_info(
+            "MQTT runtime summary "
+            f"broker={broker_name!r} recv_delta={received_delta} "
+            f"written_delta={written_delta} dropped_delta={dropped_delta} "
+            f"reconnect_delta={reconnect_delta} queue_depth={queue_depth} "
+            f"queue_high_water={queue_high_water} lag_avg_ms={lag_avg_ms:.2f} "
+            f"lag_max_ms={lag_max_ms:.2f}{idle_fragment}{drop_fragment}"
+        )
 
     # ── MQTT callbacks ────────────────────────────────────────────────────
     def on_connect(client, userdata, flags, rc):
@@ -332,13 +485,13 @@ def collect_events(helper, ew) -> None:
             "payload": payload_str,
         }
         try:
-            event_q.put_nowait(event_dict)
+            event_q.put_nowait((time.monotonic(), event_dict))
+            queue_depth = _safe_qsize()
+            with stats_lock:
+                runtime_stats["messages_received"] += 1
+            _update_queue_high_water(queue_depth)
         except queue.Full:
-            helper.log_warning(
-                "Event queue is full; dropping MQTT message on "
-                f"topic={msg.topic!r}.  Consider increasing throughput or "
-                "reducing topic breadth."
-            )
+            _log_drop_warning(msg.topic)
 
     # ── Build MQTT client ─────────────────────────────────────────────────
     client = mqtt.Client(
@@ -371,21 +524,35 @@ def collect_events(helper, ew) -> None:
             helper.log_debug("TLS disabled — plain TCP connection.")
 
         # ── Main loop ─────────────────────────────────────────────────────
+        has_attempted_connection = False
         while not shutdown_evt.is_set():
             try:
+                if has_attempted_connection:
+                    _record_reconnect_attempt()
+                else:
+                    has_attempted_connection = True
                 helper.log_info(f"Connecting to {host}:{port} …")
                 client.connect(host, port, keepalive=60)
                 client.loop_start()
 
                 # Drain the event queue, writing events to Splunk
                 while not shutdown_evt.is_set():
-                    # Flush all queued events
-                    while True:
+                    try:
+                        first_enqueued_at, first_event_dict = event_q.get(
+                            timeout=_QUEUE_GET_TIMEOUT_SECS
+                        )
+                    except queue.Empty:
+                        _maybe_log_health()
+                        continue
+
+                    pending_items = [(first_enqueued_at, first_event_dict)]
+                    for _ in range(_QUEUE_DRAIN_BATCH_SIZE - 1):
                         try:
-                            event_dict = event_q.get_nowait()
+                            pending_items.append(event_q.get_nowait())
                         except queue.Empty:
                             break
 
+                    for enqueued_at, event_dict in pending_items:
                         splunk_event = helper.new_event(
                             data=json.dumps(event_dict, ensure_ascii=False),
                             time=None,  # let Splunk assign _time = now
@@ -397,8 +564,9 @@ def collect_events(helper, ew) -> None:
                             unbroken=True,
                         )
                         ew.write_event(splunk_event)
+                        _record_write(max(0.0, time.monotonic() - enqueued_at))
 
-                    time.sleep(0.05)  # 50 ms polling granularity
+                    _maybe_log_health()
 
             except Exception as exc:
                 helper.log_error(
@@ -417,4 +585,5 @@ def collect_events(helper, ew) -> None:
                 )
                 time.sleep(interval)
 
+    _maybe_log_health(force=True)
     helper.log_info(f"MQTT input for broker '{broker_name}' stopped.")

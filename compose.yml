@@ -1,4 +1,13 @@
 services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: mosquitto
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./tools/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    restart: unless-stopped
+
   splunk:
     image: splunk/splunk:latest
     platform: linux/amd64
@@ -14,6 +23,7 @@ services:
       - ./output/TA-MQTT:/opt/splunk/etc/apps/TA-MQTT
       - ./.splunk-persist/TA-MQTT-local:/opt/splunk/etc/apps/TA-MQTT/local
       - splunk-var:/opt/splunk/var
+    restart: unless-stopped
 
 volumes:
   splunk-var:
