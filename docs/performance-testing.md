@@ -34,10 +34,13 @@ selection, and variable payload generation.
 
 This repository now includes two repo-local JMeter plans:
 
-- `tools/jmeter/mqtt-publisher-starter.jmx` for smoke validation
-- `tools/jmeter/mqtt-publisher-sustained.jmx` for a fixed sustained-load scenario
-- `tools/jmeter/mqtt-publisher-tls.jmx` for server-auth TLS validation
-- `tools/jmeter/mqtt-publisher-mtls.jmx` for dual-auth mTLS validation
+- `tools/jmeter/mqtt-publisher-10mps.jmx` — smoke/starter, 10 msg/s
+- `tools/jmeter/mqtt-publisher-500mps.jmx` — sustained baseline, 500 msg/s
+- `tools/jmeter/mqtt-publisher-1000mps.jmx` — high-throughput, 1000 msg/s
+- `tools/jmeter/mqtt-publisher-1500mps.jmx` — high-throughput, 1500 msg/s
+- `tools/jmeter/mqtt-publisher-2000mps.jmx` — high-throughput, 2000 msg/s
+- `tools/jmeter/mqtt-publisher-tls.jmx` — server-auth TLS validation
+- `tools/jmeter/mqtt-publisher-mtls.jmx` — dual-auth mTLS validation
 
 The repository still does not bundle JMeter binaries or plugin JARs into the
 add-on build.
@@ -63,16 +66,16 @@ Example non-GUI command for the local Compose stack:
 
 ```bash
 $JMETER_HOME/bin/jmeter -n \
-  -t tools/jmeter/mqtt-publisher-starter.jmx \
+  -t tools/jmeter/mqtt-publisher-10mps.jmx \
   -q tools/jmeter/local.properties.example \
   -Jmqtt.host=127.0.0.1 \
   -Jmqtt.port=1883 \
   -Jmqtt.topic=perf/ta-mqtt/test \
-  -Jmqtt.clients=4 \
-  -Jmqtt.loops=7500 \
-  -Jmqtt.payload_bytes=512 \
+  -Jmqtt.clients=1 \
+  -Jmqtt.loops=100 \
+  -Jmqtt.payload_bytes=256 \
   -Jmqtt.qos=0 \
-  -l artifacts/mqtt-publisher.jtl
+  -l artifacts/jmeter-mqtt-10mps.jtl
 ```
 
 The property names above are repository conventions used by the starter plan,
@@ -84,7 +87,7 @@ For a fixed higher-rate run, use the sustained plan:
 
 ```bash
 $JMETER_HOME/bin/jmeter -n \
-  -t tools/jmeter/mqtt-publisher-sustained.jmx \
+  -t tools/jmeter/mqtt-publisher-500mps.jmx \
   -q tools/jmeter/local.properties.example \
   -Jmqtt.host=127.0.0.1 \
   -Jmqtt.port=1883 \
@@ -92,7 +95,7 @@ $JMETER_HOME/bin/jmeter -n \
   -Jmqtt.clients=4 \
   -Jmqtt.loops=7500 \
   -Jmqtt.payload_bytes=512 \
-  -l artifacts/jmeter-mqtt-sustained.jtl
+  -l artifacts/jmeter-mqtt-500mps.jtl
 ```
 
 That sustained plan pins the constant throughput timer to `30000`
