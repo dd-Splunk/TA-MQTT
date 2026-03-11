@@ -1,11 +1,11 @@
 {
-  "globs": [
-    "**/*.md",
-    "!.venv/**",
-    "!output/**"
-  ],
-  "config": {
-    "MD013": false,
-    "MD060": false
-  }
+    "globs": [
+        "**/*.md",
+        "!.venv/**",
+        "!output/**"
+    ],
+    "config": {
+        "MD013": false,
+        "MD060": false
+    }
 }
