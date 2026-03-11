@@ -2,12 +2,17 @@
 
 This guide covers two things:
 
-- how to generate MQTT publish load from Ubuntu
+- the preferred JMeter-based workflow for generating MQTT publish load
 - which Splunk dashboard panels to use when diagnosing TA-MQTT performance issues
 
 The current local development stack already includes a Mosquitto broker in
 `docker compose`, so the default local target for smoke and load testing is
 `localhost:1883`.
+
+The repository is transitioning away from using the bundled Python load
+generator as the primary tool. The preferred direction is an external JMeter
+test plan that uses an MQTT publisher plugin, while `tools/mqtt_load_test.py`
+remains available as a fallback for parity checks and quick local smoke tests.
 
 ## Current Runtime Model
 
@@ -19,9 +24,94 @@ The performance metrics in this guide map directly to the implemented runtime:
 - blocking queue reads with bounded drain batches
 - 60-second runtime summary logs emitted by the input process
 
-## Ubuntu Load Test Script
+## Preferred JMeter Publisher Workflow
 
-Use [tools/mqtt_load_test.py](../tools/mqtt_load_test.py).
+The preferred load generator is a JMeter test plan that uses an MQTT publisher
+plugin. The current implementation target is the EMQX/XMeter `mqtt-jmeter`
+plugin, which provides MQTT Connect and Pub samplers with support for
+username/password authentication, SSL/TLS, dual SSL authentication, QoS, topic
+selection, and variable payload generation.
+
+This repository now includes two repo-local JMeter plans:
+
+- `tools/jmeter/mqtt-publisher-starter.jmx` for smoke validation
+- `tools/jmeter/mqtt-publisher-sustained.jmx` for a fixed sustained-load scenario
+
+The repository still does not bundle JMeter binaries or plugin JARs into the
+add-on build.
+
+Recommended prerequisites:
+
+- Java 11 or later
+- Apache JMeter 5.x
+- EMQX/XMeter `mqtt-jmeter` plugin JARs copied into `$JMETER_HOME/lib/ext`
+- one of the repo-local plans in `tools/jmeter/` or a derivative plan built
+  from them
+
+Recommended plan structure:
+
+- one Thread Group that represents publishing clients
+- one MQTT Connect sampler per virtual user
+- one MQTT Pub sampler driven by JMeter timers or throughput controls
+- one Disconnect sampler for clean teardown
+- user-defined variables for host, port, topic, QoS, payload bytes, username,
+  password, TLS paths, and duration
+
+Example non-GUI command for the local Compose stack:
+
+```bash
+$JMETER_HOME/bin/jmeter -n \
+  -t tools/jmeter/mqtt-publisher-starter.jmx \
+  -q tools/jmeter/local.properties.example \
+  -Jmqtt.host=127.0.0.1 \
+  -Jmqtt.port=1883 \
+  -Jmqtt.topic=perf/ta-mqtt/test \
+  -Jmqtt.clients=4 \
+  -Jmqtt.loops=7500 \
+  -Jmqtt.payload_bytes=512 \
+  -Jmqtt.qos=0 \
+  -l artifacts/mqtt-publisher.jtl
+```
+
+The property names above are repository conventions used by the starter plan,
+not built-in JMeter conventions. The current starter file keeps a fixed
+Constant Throughput Timer value because JMeter parses that field as numeric at
+XML load time.
+
+For a fixed higher-rate run, use the sustained plan:
+
+```bash
+$JMETER_HOME/bin/jmeter -n \
+  -t tools/jmeter/mqtt-publisher-sustained.jmx \
+  -q tools/jmeter/local.properties.example \
+  -Jmqtt.host=127.0.0.1 \
+  -Jmqtt.port=1883 \
+  -Jmqtt.topic=perf/ta-mqtt/test \
+  -Jmqtt.clients=4 \
+  -Jmqtt.loops=7500 \
+  -Jmqtt.payload_bytes=512 \
+  -l artifacts/jmeter-mqtt-sustained.jtl
+```
+
+That sustained plan pins the constant throughput timer to `30000`
+messages/minute, which is about `500 messages/second` across the test.
+
+For local validation, the first JMeter smoke run should target:
+
+- host `localhost`
+- port `1883`
+- topic `perf/ta-mqtt/test`
+- one publishing client
+- low publish rate such as `10 msgs/s`
+- short duration such as `10 seconds`
+
+See `tools/jmeter/README.md` for the current local Homebrew installation layout
+and starter-plan usage notes.
+
+## Fallback Python Publisher
+
+Use [tools/mqtt_load_test.py](../tools/mqtt_load_test.py) when you need a quick
+local smoke test or when validating feature parity against the JMeter path.
 
 The script supports:
 
