@@ -24,8 +24,11 @@ The installed plugin exposes these sampler classes used by the starter plan:
 
 ## Included Files
 
-- `mqtt-publisher-starter.jmx`: starter JMeter plan for MQTT publishing
-- `mqtt-publisher-sustained.jmx`: higher-rate sustained publish plan for local throughput testing
+- `mqtt-publisher-10mps.jmx`: smoke/starter plan, 10 msg/s (600 msg/min)
+- `mqtt-publisher-500mps.jmx`: sustained baseline plan, 500 msg/s (30 000 msg/min)
+- `mqtt-publisher-1000mps.jmx`: high-throughput plan, 1000 msg/s (60 000 msg/min)
+- `mqtt-publisher-1500mps.jmx`: high-throughput plan, 1500 msg/s (90 000 msg/min)
+- `mqtt-publisher-2000mps.jmx`: high-throughput plan, 2000 msg/s (120 000 msg/min)
 - `mqtt-publisher-tls.jmx`: server-auth TLS publish plan template
 - `mqtt-publisher-mtls.jmx`: dual-auth mTLS publish plan template
 - `local.properties.example`: example property values for local runs
@@ -36,7 +39,7 @@ Run this against the Mosquitto service from `compose.yml`:
 
 ```bash
 /opt/homebrew/bin/jmeter -n \
-  -t tools/jmeter/mqtt-publisher-starter.jmx \
+  -t tools/jmeter/mqtt-publisher-10mps.jmx \
   -q tools/jmeter/local.properties.example \
   -Jmqtt.host=localhost \
   -Jmqtt.port=1883 \
@@ -44,24 +47,23 @@ Run this against the Mosquitto service from `compose.yml`:
   -Jmqtt.clients=1 \
   -Jmqtt.loops=100 \
   -Jmqtt.payload_bytes=256 \
-  -l artifacts/jmeter-mqtt-smoke.jtl
+  -l artifacts/jmeter-mqtt-10mps.jtl
 ```
 
-The starter plan currently pins JMeter's constant throughput timer to `600`
+The 10mps plan pins JMeter's constant throughput timer to `600`
 messages per minute, which is about `10 messages/second` across the full test.
 JMeter loads that timer value as a numeric field during XML parsing, so it
 cannot be overridden via `-J` in this starter file. If you need a different
 fixed publish rate, open the plan in JMeter and save a variant with a different
 timer value.
 
-## Sustained Load Test
+## 500 msg/s Baseline Load Test
 
-Run this when you want a fixed higher-rate scenario against the same local
-topic and broker:
+Run this when you want the validated sustained baseline scenario:
 
 ```bash
 /opt/homebrew/bin/jmeter -n \
-  -t tools/jmeter/mqtt-publisher-sustained.jmx \
+  -t tools/jmeter/mqtt-publisher-500mps.jmx \
   -q tools/jmeter/local.properties.example \
   -Jmqtt.host=localhost \
   -Jmqtt.port=1883 \
@@ -72,7 +74,7 @@ topic and broker:
   -l artifacts/jmeter-mqtt-sustained.jtl
 ```
 
-The sustained plan pins JMeter's constant throughput timer to `30000` messages
+The 500mps plan pins JMeter's constant throughput timer to `30000` messages
 per minute, which is about `500 messages/second` across the test.
 
 ## Notes
@@ -128,3 +130,40 @@ certificate validation:
 The current XMeter plugin maps TLS and client-certificate material through the
 Connect sampler fields `mqtt.keystore_file_path` and
 `mqtt.clientcert_file_path`.
+
+## High-Throughput Stepped Plans
+
+Three fixed-rate plans step up from the sustained baseline (500 msg/s) through
+1000, 1500, and 2000 msg/s. Each runs 8 clients with 7500 loops and a 5 s
+ramp. Increase `mqtt.clients` and `mqtt.loops` to extend the test window.
+
+```bash
+# 1000 msg/s
+/opt/homebrew/bin/jmeter -n \
+  -t tools/jmeter/mqtt-publisher-1000mps.jmx \
+  -q tools/jmeter/local.properties.example \
+  -Jmqtt.host=localhost -Jmqtt.port=1883 \
+  -Jmqtt.topic=perf/ta-mqtt/test \
+  -l artifacts/jmeter-mqtt-1000mps.jtl
+
+# 1500 msg/s
+/opt/homebrew/bin/jmeter -n \
+  -t tools/jmeter/mqtt-publisher-1500mps.jmx \
+  -q tools/jmeter/local.properties.example \
+  -Jmqtt.host=localhost -Jmqtt.port=1883 \
+  -Jmqtt.topic=perf/ta-mqtt/test \
+  -l artifacts/jmeter-mqtt-1500mps.jtl
+
+# 2000 msg/s
+/opt/homebrew/bin/jmeter -n \
+  -t tools/jmeter/mqtt-publisher-2000mps.jmx \
+  -q tools/jmeter/local.properties.example \
+  -Jmqtt.host=localhost -Jmqtt.port=1883 \
+  -Jmqtt.topic=perf/ta-mqtt/test \
+  -l artifacts/jmeter-mqtt-2000mps.jtl
+```
+
+> **Note:** The ConstantThroughputTimer is a best-effort ceiling — actual
+> throughput depends on host CPU, JVM GC, and broker capacity. For Mosquitto
+> running in Docker on the local machine, broker and subscriber saturation
+> typically becomes the bottleneck before 2000 msg/s.
