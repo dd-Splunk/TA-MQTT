@@ -5,7 +5,7 @@
 Use the virtual environment binary directly:
 
 ```bash
-./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 1.1.0
+./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 1.2.0
 ```
 
 ## Build fails when `output/TA-MQTT` already exists

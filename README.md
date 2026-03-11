@@ -17,7 +17,7 @@ messages into Splunk with sourcetype `mqtt:message`.
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements-build.txt
-./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 1.1.0
+./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 1.2.0
 docker compose up -d
 ```
 
@@ -34,7 +34,7 @@ directory:
 ```bash
 docker compose stop splunk
 rm -rf output/TA-MQTT
-./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 1.1.0
+./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 1.2.0
 docker compose up -d splunk
 ```
 
