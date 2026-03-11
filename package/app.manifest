@@ -5,7 +5,7 @@
     "id": {
       "group": null,
       "name": "TA-MQTT",
-      "version": "1.0.1"
+      "version": "1.1.0"
     },
     "author": [
       {
@@ -30,7 +30,7 @@
       "name": "",
       "url": null
     },
-    "releaseNotes": "* Patch release: updated Cisco author metadata and improved CI packaging portability/validation for .spl artifacts."
+    "releaseNotes": "* Minor release: added MQTT runtime instrumentation and replaced local queue polling with blocking queue reads plus bounded draining for improved scalability diagnostics and lower idle overhead."
   },
   "dependencies": null,
   "tasks": null,
