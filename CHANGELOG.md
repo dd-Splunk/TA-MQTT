@@ -2,6 +2,17 @@
 
 All notable changes to TA-MQTT should be documented in this file.
 
+## [1.2.0] - 2026-03-11
+
+### Added
+
+- Added a local Mosquitto service in Docker Compose for repeatable add-on testing.
+- Added an Ubuntu-friendly MQTT load generator and performance testing guide.
+
+### Changed
+
+- Updated the load generator to use `paho-mqtt` callback API v2 to remove deprecation warnings.
+
 ## [1.1.0] - 2026-03-11
 
 ### Changed

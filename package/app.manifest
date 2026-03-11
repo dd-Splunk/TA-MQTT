@@ -5,7 +5,7 @@
     "id": {
       "group": null,
       "name": "TA-MQTT",
-      "version": "1.1.0"
+      "version": "1.2.0"
     },
     "author": [
       {
@@ -30,7 +30,7 @@
       "name": "",
       "url": null
     },
-    "releaseNotes": "* Minor release: added MQTT runtime instrumentation and replaced local queue polling with blocking queue reads plus bounded draining for improved scalability diagnostics and lower idle overhead."
+    "releaseNotes": "* Minor release: added local performance-testing tooling, a Dockerized Mosquitto test broker, and callback API v2 compatibility updates for the MQTT load generator."
   },
   "dependencies": null,
   "tasks": null,

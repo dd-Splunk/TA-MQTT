@@ -157,7 +157,8 @@ def publisher_worker(
 ) -> None:
     client = mqtt.Client(
         callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
-        client_id=f"{args.client_prefix}-{publisher_id}", clean_session=True
+        client_id=f"{args.client_prefix}-{publisher_id}",
+        clean_session=True,
     )
     if args.username:
         client.username_pw_set(args.username, args.password or None)
