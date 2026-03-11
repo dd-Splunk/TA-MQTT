@@ -14,6 +14,11 @@ generator as the primary tool. The preferred direction is an external JMeter
 test plan that uses an MQTT publisher plugin, while `tools/mqtt_load_test.py`
 remains available as a fallback for parity checks and quick local smoke tests.
 
+## Latest Report
+
+For the latest measured throughput, bottlenecks, and tuning deltas, see
+`docs/performance-report-2026-03-11.md`.
+
 ## Current Runtime Model
 
 The performance metrics in this guide map directly to the implemented runtime:
