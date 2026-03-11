@@ -28,6 +28,9 @@ The installed plugin exposes these sampler classes used by the starter plan:
 - `mqtt-publisher-sustained.jmx`: higher-rate sustained publish plan for local throughput testing
 - `mqtt-publisher-tls.jmx`: server-auth TLS publish plan template
 - `mqtt-publisher-mtls.jmx`: dual-auth mTLS publish plan template
+- `mqtt-publisher-1000mps.jmx`: fixed 1000 msg/s (60 000 msg/min) throughput plan
+- `mqtt-publisher-1500mps.jmx`: fixed 1500 msg/s (90 000 msg/min) throughput plan
+- `mqtt-publisher-2000mps.jmx`: fixed 2000 msg/s (120 000 msg/min) throughput plan
 - `local.properties.example`: example property values for local runs
 
 ## Local Smoke Test
@@ -128,3 +131,40 @@ certificate validation:
 The current XMeter plugin maps TLS and client-certificate material through the
 Connect sampler fields `mqtt.keystore_file_path` and
 `mqtt.clientcert_file_path`.
+
+## High-Throughput Stepped Plans
+
+Three fixed-rate plans step up from the sustained baseline (500 msg/s) through
+1000, 1500, and 2000 msg/s. Each runs 8 clients with 7500 loops and a 5 s
+ramp. Increase `mqtt.clients` and `mqtt.loops` to extend the test window.
+
+```bash
+# 1000 msg/s
+/opt/homebrew/bin/jmeter -n \
+  -t tools/jmeter/mqtt-publisher-1000mps.jmx \
+  -q tools/jmeter/local.properties.example \
+  -Jmqtt.host=localhost -Jmqtt.port=1883 \
+  -Jmqtt.topic=perf/ta-mqtt/test \
+  -l artifacts/jmeter-mqtt-1000mps.jtl
+
+# 1500 msg/s
+/opt/homebrew/bin/jmeter -n \
+  -t tools/jmeter/mqtt-publisher-1500mps.jmx \
+  -q tools/jmeter/local.properties.example \
+  -Jmqtt.host=localhost -Jmqtt.port=1883 \
+  -Jmqtt.topic=perf/ta-mqtt/test \
+  -l artifacts/jmeter-mqtt-1500mps.jtl
+
+# 2000 msg/s
+/opt/homebrew/bin/jmeter -n \
+  -t tools/jmeter/mqtt-publisher-2000mps.jmx \
+  -q tools/jmeter/local.properties.example \
+  -Jmqtt.host=localhost -Jmqtt.port=1883 \
+  -Jmqtt.topic=perf/ta-mqtt/test \
+  -l artifacts/jmeter-mqtt-2000mps.jtl
+```
+
+> **Note:** The ConstantThroughputTimer is a best-effort ceiling — actual
+> throughput depends on host CPU, JVM GC, and broker capacity. For Mosquitto
+> running in Docker on the local machine, broker and subscriber saturation
+> typically becomes the bottleneck before 2000 msg/s.
