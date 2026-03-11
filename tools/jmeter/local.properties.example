@@ -15,3 +15,7 @@ mqtt.username=
 mqtt.password=
 mqtt.client_id_prefix=ta-mqtt-jmeter-
 mqtt.keep_alive=60
+mqtt.keystore_file_path=
+mqtt.keystore_password=
+mqtt.clientcert_file_path=
+mqtt.clientcert_password=
