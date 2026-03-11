@@ -3,6 +3,11 @@
 TA-MQTT is a Splunk Technical Add-on that subscribes to MQTT topics and writes
 messages into Splunk with sourcetype `mqtt:message`.
 
+Performance testing is migrating toward a repo-local JMeter MQTT publisher
+workflow under `tools/jmeter/`. The repository currently keeps
+`tools/mqtt_load_test.py` as a fallback tool for parity checks and quick local
+smoke tests.
+
 The current implementation uses one modular-input process per stanza. Each
 stanza runs its own MQTT client, receives messages on paho-mqtt's network
 thread, buffers them through a bounded in-memory queue, and writes events to
@@ -62,7 +67,7 @@ docker compose up -d splunk
 - `package/`: source of truth for the add-on's code, defaults, and manifest
 - `globalConfig.json`: UCC UI schema for broker and input configuration
 - `output/TA-MQTT/`: generated build output mounted into the Splunk container
-- `tools/`: local development utilities, including the MQTT load generator and Mosquitto config
+- `tools/`: local development utilities, including the JMeter starter assets, the fallback Python load generator, and Mosquitto config
 - `docs/`: operator and developer documentation
 
 ## Documentation
@@ -71,6 +76,7 @@ docker compose up -d splunk
 - [Configuration and Events](docs/configuration-and-events.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Performance Testing](docs/performance-testing.md)
+- [JMeter Migration Status](docs/jmeter-migration.md)
 
 ## CI/CD and Releases
 
