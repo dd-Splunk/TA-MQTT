@@ -26,6 +26,8 @@ The installed plugin exposes these sampler classes used by the starter plan:
 
 - `mqtt-publisher-starter.jmx`: starter JMeter plan for MQTT publishing
 - `mqtt-publisher-sustained.jmx`: higher-rate sustained publish plan for local throughput testing
+- `mqtt-publisher-tls.jmx`: server-auth TLS publish plan template
+- `mqtt-publisher-mtls.jmx`: dual-auth mTLS publish plan template
 - `local.properties.example`: example property values for local runs
 
 ## Local Smoke Test
@@ -76,10 +78,53 @@ per minute, which is about `500 messages/second` across the test.
 ## Notes
 
 - The starter plan uses TCP and anonymous access by default.
-- TLS and mTLS fields are present in the sampler, but the starter does not ship
-  a certificate workflow yet.
+- TLS and mTLS use dedicated plan templates in this directory.
 - The plugin uses JMeter thread-local connection state, so the plan connects,
   publishes, and disconnects within the same thread group.
 - The `mqtt.client_name` default is set to `hivemq`, which matches the factory
   name exposed by the currently installed plugin jar. If your plugin exposes a
   different factory name, override it with `-Jmqtt.client_name=...`.
+
+## TLS Server-Auth Test
+
+Run this against a TLS-enabled broker and provide trust material through the
+plugin's keystore path fields:
+
+```bash
+/opt/homebrew/bin/jmeter -n \
+  -t tools/jmeter/mqtt-publisher-tls.jmx \
+  -q tools/jmeter/local.properties.example \
+  -Jmqtt.host=localhost \
+  -Jmqtt.port=8883 \
+  -Jmqtt.protocol=SSL \
+  -Jmqtt.topic=perf/ta-mqtt/tls \
+  -Jmqtt.qos=1 \
+  -Jmqtt.keystore_file_path=/absolute/path/to/ca-or-truststore \
+  -Jmqtt.keystore_password=changeit \
+  -l artifacts/jmeter-mqtt-tls.jtl
+```
+
+## mTLS Dual-Auth Test
+
+Run this when the broker requires client certificates in addition to server
+certificate validation:
+
+```bash
+/opt/homebrew/bin/jmeter -n \
+  -t tools/jmeter/mqtt-publisher-mtls.jmx \
+  -q tools/jmeter/local.properties.example \
+  -Jmqtt.host=localhost \
+  -Jmqtt.port=8883 \
+  -Jmqtt.protocol=SSL \
+  -Jmqtt.topic=perf/ta-mqtt/mtls \
+  -Jmqtt.qos=1 \
+  -Jmqtt.keystore_file_path=/absolute/path/to/ca-or-truststore \
+  -Jmqtt.keystore_password=changeit \
+  -Jmqtt.clientcert_file_path=/absolute/path/to/client-keystore \
+  -Jmqtt.clientcert_password=changeit \
+  -l artifacts/jmeter-mqtt-mtls.jtl
+```
+
+The current XMeter plugin maps TLS and client-certificate material through the
+Connect sampler fields `mqtt.keystore_file_path` and
+`mqtt.clientcert_file_path`.

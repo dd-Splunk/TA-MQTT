@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="TA-MQTT MQTT Publisher TLS" enabled="true">
+      <stringProp name="TestPlan.comments">TLS server-auth MQTT publisher plan for TA-MQTT using the installed XMeter MQTT plugin.</stringProp>
+      <boolProp name="TestPlan.functional_mode">false</boolProp>
+      <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="Variables" enabled="true">
+        <collectionProp name="Arguments.arguments">
+          <elementProp name="mqtt.host" elementType="Argument">
+            <stringProp name="Argument.name">mqtt.host</stringProp>
+            <stringProp name="Argument.value">localhost</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="mqtt.port" elementType="Argument">
+            <stringProp name="Argument.name">mqtt.port</stringProp>
+            <stringProp name="Argument.value">8883</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="mqtt.version" elementType="Argument">
+            <stringProp name="Argument.name">mqtt.version</stringProp>
+            <stringProp name="Argument.value">3.1.1</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="mqtt.protocol" elementType="Argument">
+            <stringProp name="Argument.name">mqtt.protocol</stringProp>
+            <stringProp name="Argument.value">SSL</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="mqtt.client_name" elementType="Argument">
+            <stringProp name="Argument.name">mqtt.client_name</stringProp>
+            <stringProp name="Argument.value">hivemq</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="mqtt.topic" elementType="Argument">
+            <stringProp name="Argument.name">mqtt.topic</stringProp>
+            <stringProp name="Argument.value">perf/ta-mqtt/tls</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="mqtt.qos" elementType="Argument">
+            <stringProp name="Argument.name">mqtt.qos</stringProp>
+            <stringProp name="Argument.value">1</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="mqtt.clients" elementType="Argument">
+            <stringProp name="Argument.name">mqtt.clients</stringProp>
+            <stringProp name="Argument.value">1</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="mqtt.loops" elementType="Argument">
+            <stringProp name="Argument.name">mqtt.loops</stringProp>
+            <stringProp name="Argument.value">100</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="mqtt.ramp_up" elementType="Argument">
+            <stringProp name="Argument.name">mqtt.ramp_up</stringProp>
+            <stringProp name="Argument.value">1</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="mqtt.payload_bytes" elementType="Argument">
+            <stringProp name="Argument.name">mqtt.payload_bytes</stringProp>
+            <stringProp name="Argument.value">512</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="mqtt.username" elementType="Argument">
+            <stringProp name="Argument.name">mqtt.username</stringProp>
+            <stringProp name="Argument.value"></stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="mqtt.password" elementType="Argument">
+            <stringProp name="Argument.name">mqtt.password</stringProp>
+            <stringProp name="Argument.value"></stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="mqtt.client_id_prefix" elementType="Argument">
+            <stringProp name="Argument.name">mqtt.client_id_prefix</stringProp>
+            <stringProp name="Argument.value">ta-mqtt-jmeter-tls-</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="mqtt.keep_alive" elementType="Argument">
+            <stringProp name="Argument.name">mqtt.keep_alive</stringProp>
+            <stringProp name="Argument.value">60</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="mqtt.keystore_file_path" elementType="Argument">
+            <stringProp name="Argument.name">mqtt.keystore_file_path</stringProp>
+            <stringProp name="Argument.value"></stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="mqtt.keystore_password" elementType="Argument">
+            <stringProp name="Argument.name">mqtt.keystore_password</stringProp>
+            <stringProp name="Argument.value"></stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="mqtt.clientcert_file_path" elementType="Argument">
+            <stringProp name="Argument.name">mqtt.clientcert_file_path</stringProp>
+            <stringProp name="Argument.value"></stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="mqtt.clientcert_password" elementType="Argument">
+            <stringProp name="Argument.name">mqtt.clientcert_password</stringProp>
+            <stringProp name="Argument.value"></stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+        </collectionProp>
+      </elementProp>
+      <stringProp name="TestPlan.user_define_classpath"></stringProp>
+    </TestPlan>
+    <hashTree>
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="MQTT Publishers" enabled="true">
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+          <stringProp name="LoopController.loops">${__P(mqtt.loops,${mqtt.loops})}</stringProp>
+        </elementProp>
+        <stringProp name="ThreadGroup.num_threads">${__P(mqtt.clients,${mqtt.clients})}</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">${__P(mqtt.ramp_up,${mqtt.ramp_up})}</stringProp>
+        <boolProp name="ThreadGroup.scheduler">false</boolProp>
+        <stringProp name="ThreadGroup.duration"></stringProp>
+        <stringProp name="ThreadGroup.delay"></stringProp>
+      </ThreadGroup>
+      <hashTree>
+        <net.xmeter.samplers.ConnectSampler guiclass="net.xmeter.gui.ConnectSamplerUI" testclass="net.xmeter.samplers.ConnectSampler" testname="MQTT Connect" enabled="true">
+          <stringProp name="mqtt.server">${__P(mqtt.host,${mqtt.host})}</stringProp>
+          <stringProp name="mqtt.version">${__P(mqtt.version,${mqtt.version})}</stringProp>
+          <stringProp name="mqtt.port">${__P(mqtt.port,${mqtt.port})}</stringProp>
+          <stringProp name="mqtt.conn_timeout">10</stringProp>
+          <stringProp name="mqtt.client_name">${__P(mqtt.client_name,${mqtt.client_name})}</stringProp>
+          <stringProp name="mqtt.protocol">${__P(mqtt.protocol,${mqtt.protocol})}</stringProp>
+          <stringProp name="mqtt.ws_path"></stringProp>
+          <boolProp name="mqtt.dual_ssl_authentication">false</boolProp>
+          <stringProp name="mqtt.keystore_file_path">${__P(mqtt.keystore_file_path,${mqtt.keystore_file_path})}</stringProp>
+          <stringProp name="mqtt.clientcert_file_path">${__P(mqtt.clientcert_file_path,${mqtt.clientcert_file_path})}</stringProp>
+          <stringProp name="mqtt.keystore_password">${__P(mqtt.keystore_password,${mqtt.keystore_password})}</stringProp>
+          <stringProp name="mqtt.clientcert_password">${__P(mqtt.clientcert_password,${mqtt.clientcert_password})}</stringProp>
+          <stringProp name="mqtt.user_name">${__P(mqtt.username,${mqtt.username})}</stringProp>
+          <stringProp name="mqtt.password">${__P(mqtt.password,${mqtt.password})}</stringProp>
+          <stringProp name="mqtt.client_id_prefix">${__P(mqtt.client_id_prefix,${mqtt.client_id_prefix})}</stringProp>
+          <boolProp name="mqtt.client_id_suffix">true</boolProp>
+          <stringProp name="mqtt.conn_keep_alive">${__P(mqtt.keep_alive,${mqtt.keep_alive})}</stringProp>
+          <stringProp name="mqtt.conn_attampt_max">0</stringProp>
+          <stringProp name="mqtt.reconn_attampt_max">0</stringProp>
+          <stringProp name="mqtt.conn_clean_session">true</stringProp>
+        </net.xmeter.samplers.ConnectSampler>
+        <hashTree/>
+        <ConstantThroughputTimer guiclass="TestBeanGUI" testclass="ConstantThroughputTimer" testname="Publish Rate" enabled="true">
+          <doubleProp>
+            <name>throughput</name>
+            <value>600.0</value>
+            <savedValue>600.0</savedValue>
+          </doubleProp>
+          <intProp name="calcMode">1</intProp>
+        </ConstantThroughputTimer>
+        <hashTree/>
+        <net.xmeter.samplers.PubSampler guiclass="net.xmeter.gui.PubSamplerUI" testclass="net.xmeter.samplers.PubSampler" testname="MQTT Publish" enabled="true">
+          <stringProp name="mqtt.qos_level">${__P(mqtt.qos,${mqtt.qos})}</stringProp>
+          <stringProp name="mqtt.topic_name">${__P(mqtt.topic,${mqtt.topic})}</stringProp>
+          <boolProp name="mqtt.add_timestamp">true</boolProp>
+          <stringProp name="mqtt.message_type">Random string with fixed length</stringProp>
+          <stringProp name="mqtt.message_type_fixed_length">${__P(mqtt.payload_bytes,${mqtt.payload_bytes})}</stringProp>
+          <stringProp name="mqtt.message_to_sent"></stringProp>
+          <boolProp name="mqtt.retained_message">false</boolProp>
+        </net.xmeter.samplers.PubSampler>
+        <hashTree/>
+        <net.xmeter.samplers.DisConnectSampler guiclass="net.xmeter.gui.DisConnectSamplerUI" testclass="net.xmeter.samplers.DisConnectSampler" testname="MQTT Disconnect" enabled="true"/>
+        <hashTree/>
+      </hashTree>
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>

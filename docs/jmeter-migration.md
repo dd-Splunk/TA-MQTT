@@ -9,6 +9,7 @@ JMeter-based MQTT publisher workflow.
 - Current plugin target: EMQX/XMeter `mqtt-jmeter`
 - Repository role: keep smoke and sustained JMX plans and document how to run them against TA-MQTT
 - Temporary fallback: `tools/mqtt_load_test.py`
+- TLS/mTLS status: dedicated JMX templates now exist (`mqtt-publisher-tls.jmx` and `mqtt-publisher-mtls.jmx`) and need broker-specific cert material to execute
 
 ## Why JMeter Still Stays Out of the Add-on Build
 
@@ -43,6 +44,10 @@ The repo-local JMX plans under `tools/jmeter/` expose properties for:
 - `mqtt.client_name`
 - `mqtt.client_id_prefix`
 - `mqtt.keep_alive`
+- `mqtt.keystore_file_path`
+- `mqtt.keystore_password`
+- `mqtt.clientcert_file_path`
+- `mqtt.clientcert_password`
 
 The current local plugin advertises `hivemq` as the default MQTT factory name.
 

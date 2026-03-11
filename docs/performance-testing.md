@@ -36,6 +36,8 @@ This repository now includes two repo-local JMeter plans:
 
 - `tools/jmeter/mqtt-publisher-starter.jmx` for smoke validation
 - `tools/jmeter/mqtt-publisher-sustained.jmx` for a fixed sustained-load scenario
+- `tools/jmeter/mqtt-publisher-tls.jmx` for server-auth TLS validation
+- `tools/jmeter/mqtt-publisher-mtls.jmx` for dual-auth mTLS validation
 
 The repository still does not bundle JMeter binaries or plugin JARs into the
 add-on build.
@@ -107,6 +109,14 @@ For local validation, the first JMeter smoke run should target:
 
 See `tools/jmeter/README.md` for the current local Homebrew installation layout
 and starter-plan usage notes.
+
+TLS and mTLS runs use the same property model and require providing certificate
+material through:
+
+- `mqtt.keystore_file_path`
+- `mqtt.keystore_password`
+- `mqtt.clientcert_file_path`
+- `mqtt.clientcert_password`
 
 ## Fallback Python Publisher
 
