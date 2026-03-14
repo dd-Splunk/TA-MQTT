@@ -392,6 +392,21 @@
                                     "errorMsg": "Reconnect interval must be a positive integer."
                                 }
                             ]
+                        },
+                        {
+                            "field": "batch_mode",
+                            "label": "Batch Mode (1/0)",
+                            "type": "text",
+                            "required": false,
+                            "defaultValue": "0",
+                            "help": "Optional. Set to 1 to enable batch output mode (hec_batch), or 0 for single-event mode.",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^[01]$",
+                                    "errorMsg": "Batch Mode must be 1 or 0."
+                                }
+                            ]
                         }
                     ],
                     "table": {
@@ -453,6 +468,10 @@
                             {
                                 "field": "mqtt_client_id",
                                 "label": "MQTT Client ID"
+                            },
+                            {
+                                "field": "batch_mode",
+                                "label": "Batch Mode"
                             }
                         ],
                         "actions": [
