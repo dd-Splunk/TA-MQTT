@@ -8,9 +8,11 @@ re-running the build step.
 Do NOT place business logic here — edit input_module/mqtt_subscriber.py.
 """
 
-import import_declare_test  # noqa: F401 — sets up sys.path (lib/, etc.)
-
 import sys
+
+sys.dont_write_bytecode = True
+
+import import_declare_test  # noqa: F401 — sets up sys.path (lib/, etc.)
 
 from splunktaucclib.modinput_wrapper import base_modinput as bmi  # type: ignore
 

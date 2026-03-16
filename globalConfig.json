@@ -395,16 +395,142 @@
                         },
                         {
                             "field": "batch_mode",
-                            "label": "Batch Mode (1/0)",
-                            "type": "text",
+                            "label": "Batch Output Mode",
+                            "type": "singleSelect",
                             "required": false,
                             "defaultValue": "0",
-                            "help": "Optional. Set to 1 to enable batch output mode (hec_batch), or 0 for single-event mode.",
+                            "help": "Select whether this input uses the current single-event writer or buffered HEC batch egress.",
                             "validators": [
                                 {
                                     "type": "regex",
                                     "pattern": "^[01]$",
-                                    "errorMsg": "Batch Mode must be 1 or 0."
+                                    "errorMsg": "Batch Output Mode must be 0 or 1."
+                                }
+                            ],
+                            "options": {
+                                "autoCompleteFields": [
+                                    {
+                                        "value": "0",
+                                        "label": "0 - single-event modular input writer"
+                                    },
+                                    {
+                                        "value": "1",
+                                        "label": "1 - HEC batch writer"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "field": "hec_endpoint",
+                            "label": "HEC Endpoint",
+                            "type": "text",
+                            "required": false,
+                            "defaultValue": "https://localhost:8088/services/collector/event",
+                            "help": "HTTP Event Collector endpoint used when Output Mode is hec_batch.",
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "minLength": 0,
+                                    "maxLength": 500,
+                                    "errorMsg": "HEC Endpoint must be at most 500 characters."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "hec_token",
+                            "label": "HEC Token",
+                            "type": "text",
+                            "required": false,
+                            "encrypted": true,
+                            "help": "HEC authentication token used when Output Mode is hec_batch.",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^$|^[A-Za-z0-9][A-Za-z0-9-]{0,63}$",
+                                    "errorMsg": "HEC Token must be 1-64 chars and contain only letters, digits, or '-'."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "hec_verify_tls",
+                            "label": "Verify HEC TLS Certificate",
+                            "type": "checkbox",
+                            "required": false,
+                            "defaultValue": true,
+                            "help": "Verify the HEC server TLS certificate. Disable only for self-signed development endpoints."
+                        },
+                        {
+                            "field": "hec_batch_max_events",
+                            "label": "HEC Max Events per Batch",
+                            "type": "text",
+                            "required": false,
+                            "defaultValue": "500",
+                            "help": "Flush when this many events are buffered in hec_batch mode.",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^[1-9][0-9]*$",
+                                    "errorMsg": "HEC Max Events per Batch must be a positive integer."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "hec_batch_max_bytes",
+                            "label": "HEC Max Bytes per Batch",
+                            "type": "text",
+                            "required": false,
+                            "defaultValue": "1048576",
+                            "help": "Flush when buffered HEC payload bytes reach this threshold.",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^[1-9][0-9]*$",
+                                    "errorMsg": "HEC Max Bytes per Batch must be a positive integer."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "hec_flush_interval_ms",
+                            "label": "HEC Flush Interval (ms)",
+                            "type": "text",
+                            "required": false,
+                            "defaultValue": "250",
+                            "help": "Flush interval used in hec_batch mode when event and byte thresholds are not reached.",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^[1-9][0-9]*$",
+                                    "errorMsg": "HEC Flush Interval must be a positive integer."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "hec_retry_max_attempts",
+                            "label": "HEC Retry Attempts",
+                            "type": "text",
+                            "required": false,
+                            "defaultValue": "5",
+                            "help": "Retry attempts for failed HEC POST operations before dropping the batch.",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^[0-9]+$",
+                                    "errorMsg": "HEC Retry Attempts must be a non-negative integer."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "hec_retry_backoff_ms",
+                            "label": "HEC Retry Backoff (ms)",
+                            "type": "text",
+                            "required": false,
+                            "defaultValue": "200",
+                            "help": "Initial retry delay for HEC failures. The delay doubles on each subsequent retry.",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^[1-9][0-9]*$",
+                                    "errorMsg": "HEC Retry Backoff must be a positive integer."
                                 }
                             ]
                         }
@@ -434,6 +560,10 @@
                             {
                                 "field": "interval",
                                 "label": "Reconnect (s)"
+                            },
+                            {
+                                "field": "batch_mode",
+                                "label": "Batch Mode"
                             }
                         ],
                         "moreInfo": [
@@ -472,6 +602,34 @@
                             {
                                 "field": "batch_mode",
                                 "label": "Batch Mode"
+                            },
+                            {
+                                "field": "hec_endpoint",
+                                "label": "HEC Endpoint"
+                            },
+                            {
+                                "field": "hec_verify_tls",
+                                "label": "Verify HEC TLS"
+                            },
+                            {
+                                "field": "hec_batch_max_events",
+                                "label": "HEC Max Events"
+                            },
+                            {
+                                "field": "hec_batch_max_bytes",
+                                "label": "HEC Max Bytes"
+                            },
+                            {
+                                "field": "hec_flush_interval_ms",
+                                "label": "HEC Flush Interval"
+                            },
+                            {
+                                "field": "hec_retry_max_attempts",
+                                "label": "HEC Retry Attempts"
+                            },
+                            {
+                                "field": "hec_retry_backoff_ms",
+                                "label": "HEC Retry Backoff"
                             }
                         ],
                         "actions": [
