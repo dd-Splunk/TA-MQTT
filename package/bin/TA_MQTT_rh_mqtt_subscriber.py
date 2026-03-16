@@ -27,7 +27,7 @@ special_fields = [
                 min_len=1,
             ),
             validator.Pattern(
-                regex=r"""^[a-zA-Z][a-zA-Z0-9_]*$""",
+                regex=r"""^[a-zA-Z][a-zA-Z0-9_-]*$""",
             ),
         ),
     )
