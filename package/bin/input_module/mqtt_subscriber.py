@@ -506,12 +506,12 @@ def validate_input(helper, definition) -> None:
     if output_mode == "hec_batch":
         hec_endpoint = str(params.get("hec_endpoint", "")).strip()
         if not hec_endpoint:
-            raise ValueError("HEC Endpoint is required when Output Mode is hec_batch.")
+            raise ValueError(
+                "HEC Endpoint is required when Batch Output Mode is enabled."
+            )
 
         hec_token = str(params.get("hec_token", "")).strip()
-        if not hec_token:
-            raise ValueError("HEC Token is required when Output Mode is hec_batch.")
-        if not _HEC_TOKEN_REGEX.fullmatch(hec_token):
+        if hec_token and not _HEC_TOKEN_REGEX.fullmatch(hec_token):
             raise ValueError(
                 "HEC Token must be 1-64 chars and contain only letters, "
                 "digits, or '-'."

@@ -426,7 +426,7 @@
                             "type": "text",
                             "required": false,
                             "defaultValue": "https://localhost:8088/services/collector/event",
-                            "help": "HTTP Event Collector endpoint used when Output Mode is hec_batch.",
+                            "help": "HTTP Event Collector endpoint used when Batch Output Mode is set to HEC batch writer.",
                             "validators": [
                                 {
                                     "type": "string",
@@ -441,8 +441,11 @@
                             "label": "HEC Token",
                             "type": "text",
                             "required": false,
-                            "encrypted": true,
-                            "help": "HEC authentication token used when Output Mode is hec_batch.",
+                            "encrypted": false,
+                            "help": "Auto-generated per-input HEC token. Hidden on create/edit forms and shown read-only in the expanded input details.",
+                            "options": {
+                                "display": false
+                            },
                             "validators": [
                                 {
                                     "type": "regex",
@@ -606,6 +609,10 @@
                             {
                                 "field": "hec_endpoint",
                                 "label": "HEC Endpoint"
+                            },
+                            {
+                                "field": "hec_token",
+                                "label": "HEC Token"
                             },
                             {
                                 "field": "hec_verify_tls",
