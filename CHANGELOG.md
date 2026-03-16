@@ -2,6 +2,27 @@
 
 All notable changes to TA-MQTT should be documented in this file.
 
+## [2.0.0] - 2026-03-16
+
+### Added in 2.0.0
+
+- Added per-input `batch_mode` configuration (`0` single-event writer, `1` HEC batch writer).
+- Added per-input HEC controls for endpoint, token, TLS verification, batch thresholds, and retry/backoff settings.
+- Added post-build output cleanup hook to remove Python cache/bytecode artifacts.
+
+### Changed in 2.0.0
+
+- Introduced optional HEC batch egress strategy while preserving current single-event path as default (`batch_mode=0`).
+- Removed legacy runtime/default-config compatibility path based on `output_mode`.
+- Strengthened HEC token validation in both UI schema and runtime (`1-64` chars, `[A-Za-z0-9-]`).
+- Hardened modular-input entrypoint to avoid bytecode writes in runtime environments.
+- Updated R1 implementation/smoke documentation to match the current architecture and validation state.
+
+### Validated in 2.0.0
+
+- Build and smoke flow validated after major changes.
+- End-to-end performance retest validated at `5000 msgs/s` for `60s` with full indexing coverage in local Docker stack.
+
 ## [1.2.0] - 2026-03-11
 
 ### Added in 1.2.0

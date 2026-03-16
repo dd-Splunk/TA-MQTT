@@ -5,7 +5,7 @@
     "id": {
       "group": null,
       "name": "TA-MQTT",
-      "version": "1.2.0"
+      "version": "2.0.0"
     },
     "author": [
       {
@@ -30,7 +30,7 @@
       "name": "",
       "url": null
     },
-    "releaseNotes": "* Minor release: added local performance-testing tooling, a Dockerized Mosquitto test broker, and callback API v2 compatibility updates for the MQTT load generator."
+    "releaseNotes": "* Major release: introduces per-input batch mode and optional HEC batch egress, removes legacy output_mode compatibility, strengthens HEC token validation, and includes validated high-throughput retest results (5000 msgs/s for 60s with full indexing coverage)."
   },
   "dependencies": null,
   "tasks": null,
