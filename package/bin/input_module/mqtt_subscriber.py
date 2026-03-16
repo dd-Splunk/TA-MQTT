@@ -27,11 +27,13 @@ import json
 import logging
 import os
 import queue
+import re
 import ssl
 import sys
 import tempfile
 import threading
 import time
+import urllib.request
 from typing import Any, Dict, List, Optional, Tuple
 
 # ---------------------------------------------------------------------------
@@ -49,6 +51,8 @@ logger = logging.getLogger(__name__)
 # ───────────────────────────────────────────────────────────────────────────
 
 _TRUTHY = {"1", "true", "yes", "on"}
+_OUTPUT_MODES = {"modinput_single_event", "hec_batch"}
+_HEC_TOKEN_REGEX = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]{0,63}$")
 _HEALTH_LOG_INTERVAL_SECS = 60.0
 _QUEUE_GET_TIMEOUT_SECS = 1.0
 _QUEUE_DRAIN_BATCH_SIZE = 200
@@ -60,6 +64,17 @@ def _is_true(value: Any) -> bool:
     if isinstance(value, bool):
         return value
     return str(value).strip().lower() in _TRUTHY
+
+
+def _parse_positive_int(raw_value: Any, field_name: str) -> int:
+    """Parse and validate positive integer settings values."""
+    try:
+        parsed_value = int(str(raw_value).strip())
+    except (ValueError, TypeError):
+        raise ValueError(f"{field_name} must be a positive integer.")
+    if parsed_value < 1:
+        raise ValueError(f"{field_name} must be a positive integer.")
+    return parsed_value
 
 
 def _get_broker_config(helper, broker_name: str) -> Dict[str, str]:
@@ -191,6 +206,263 @@ class _TLSSetup:
         return ctx
 
 
+class _EgressWriter:
+    """Abstract egress writer interface for output strategy selection."""
+
+    def write(self, event_dict: Dict[str, Any], host: str, port: int) -> None:
+        raise NotImplementedError
+
+    def flush(self, force: bool = False) -> None:
+        del force
+
+    def close(self) -> None:
+        self.flush(force=True)
+
+
+class _ModInputSingleEventWriter(_EgressWriter):
+    """Current behavior: write each event individually via ew.write_event."""
+
+    def __init__(self, helper, ew, sourcetype: str, index: str) -> None:
+        self._helper = helper
+        self._ew = ew
+        self._sourcetype = sourcetype
+        self._index = index
+
+    def write(self, event_dict: Dict[str, Any], host: str, port: int) -> None:
+        splunk_event = self._helper.new_event(
+            data=json.dumps(event_dict, ensure_ascii=False),
+            time=None,  # let Splunk assign _time = now
+            host=host,
+            source=f"mqtt://{host}:{port}/{event_dict['topic']}",
+            sourcetype=self._sourcetype,
+            index=self._index,
+            done=True,
+            unbroken=True,
+        )
+        self._ew.write_event(splunk_event)
+
+
+class _HecBatchWriter(_EgressWriter):
+    """Batch egress writer that sends newline-delimited events to Splunk HEC."""
+
+    def __init__(
+        self,
+        helper,
+        endpoint: str,
+        token: str,
+        verify_tls: bool,
+        batch_max_events: int,
+        batch_max_bytes: int,
+        flush_interval_ms: int,
+        retry_max_attempts: int,
+        retry_backoff_ms: int,
+        sourcetype: str,
+        index: str,
+    ) -> None:
+        self._helper = helper
+        self._endpoint = endpoint
+        self._token = token
+        self._verify_tls = verify_tls
+        self._batch_max_events = batch_max_events
+        self._batch_max_bytes = batch_max_bytes
+        self._flush_interval_ms = flush_interval_ms
+        self._retry_max_attempts = retry_max_attempts
+        self._retry_backoff_ms = retry_backoff_ms
+        self._sourcetype = sourcetype
+        self._index = index
+
+        self._buffer_lines: List[str] = []
+        self._buffer_bytes = 0
+        self._last_flush_monotonic = time.monotonic()
+
+        self._hec_batches_sent = 0
+        self._hec_batches_failed = 0
+        self._hec_events_sent = 0
+        self._hec_events_failed = 0
+        self._hec_retries = 0
+
+    def _build_hec_payload_line(
+        self,
+        event_dict: Dict[str, Any],
+        host: str,
+        port: int,
+    ) -> str:
+        topic = event_dict.get("topic", "")
+        hec_event = {
+            "event": event_dict,
+            "host": host,
+            "source": f"mqtt://{host}:{port}/{topic}",
+            "sourcetype": self._sourcetype,
+            "index": self._index,
+        }
+        return json.dumps(hec_event, ensure_ascii=False, separators=(",", ":"))
+
+    def write(self, event_dict: Dict[str, Any], host: str, port: int) -> None:
+        line = self._build_hec_payload_line(event_dict=event_dict, host=host, port=port)
+        line_bytes = len(line.encode("utf-8")) + 1
+
+        if (
+            self._buffer_lines
+            and self._buffer_bytes + line_bytes > self._batch_max_bytes
+        ):
+            self.flush(force=True)
+
+        self._buffer_lines.append(line)
+        self._buffer_bytes += line_bytes
+
+        if (
+            len(self._buffer_lines) >= self._batch_max_events
+            or self._buffer_bytes >= self._batch_max_bytes
+        ):
+            self.flush(force=True)
+
+    def _build_ssl_context(self):
+        if not self._endpoint.lower().startswith("https://"):
+            return None
+        if self._verify_tls:
+            return ssl.create_default_context()
+        return ssl._create_unverified_context()
+
+    def _send_payload(self, payload: bytes, events_in_batch: int) -> None:
+        headers = {
+            "Authorization": f"Splunk {self._token}",
+            "Content-Type": "application/json",
+        }
+        request = urllib.request.Request(
+            self._endpoint,
+            data=payload,
+            headers=headers,
+            method="POST",
+        )
+        ssl_context = self._build_ssl_context()
+
+        last_error: Optional[Exception] = None
+        for attempt_index in range(self._retry_max_attempts):
+            try:
+                with urllib.request.urlopen(
+                    request,
+                    timeout=10,
+                    context=ssl_context,
+                ) as response:
+                    status_code = response.getcode()
+                    response_body = response.read().decode("utf-8", errors="replace")
+
+                if status_code != 200:
+                    raise RuntimeError(
+                        f"HEC HTTP status={status_code} body={response_body[:300]}"
+                    )
+
+                parsed_response = json.loads(response_body)
+                if int(parsed_response.get("code", 1)) != 0:
+                    raise RuntimeError(
+                        "HEC application error "
+                        f"code={parsed_response.get('code')} "
+                        f"text={parsed_response.get('text')}"
+                    )
+
+                self._hec_batches_sent += 1
+                self._hec_events_sent += events_in_batch
+                return
+            except Exception as exc:
+                last_error = exc
+                if attempt_index + 1 < self._retry_max_attempts:
+                    self._hec_retries += 1
+                    backoff_seconds = (
+                        self._retry_backoff_ms * (2**attempt_index)
+                    ) / 1000.0
+                    time.sleep(backoff_seconds)
+
+        self._hec_batches_failed += 1
+        self._hec_events_failed += events_in_batch
+        raise RuntimeError(f"HEC batch send failed after retries: {last_error}")
+
+    def flush(self, force: bool = False) -> bool:
+        """Flush the buffer if conditions are met.  Returns True if a flush was performed."""
+        if not self._buffer_lines:
+            return False
+
+        if not force:
+            elapsed_ms = (time.monotonic() - self._last_flush_monotonic) * 1000.0
+            if (
+                len(self._buffer_lines) < self._batch_max_events
+                and self._buffer_bytes < self._batch_max_bytes
+                and elapsed_ms < self._flush_interval_ms
+            ):
+                return False
+
+        lines = self._buffer_lines
+        buffered_bytes = self._buffer_bytes
+        self._buffer_lines = []
+        self._buffer_bytes = 0
+        self._last_flush_monotonic = time.monotonic()
+
+        payload = ("\n".join(lines) + "\n").encode("utf-8")
+        events_in_batch = len(lines)
+
+        try:
+            self._send_payload(payload=payload, events_in_batch=events_in_batch)
+            self._helper.log_debug(
+                "HEC batch sent "
+                f"events={events_in_batch} bytes={buffered_bytes} "
+                f"retries_total={self._hec_retries}"
+            )
+        except Exception as exc:
+            self._helper.log_error(
+                "HEC batch flush failed; dropping buffered events "
+                f"events={events_in_batch} error={exc}"
+            )
+        return True
+
+    def close(self) -> None:
+        self.flush(force=True)
+        self._helper.log_info(
+            "HEC batch writer summary "
+            f"batches_sent={self._hec_batches_sent} "
+            f"batches_failed={self._hec_batches_failed} "
+            f"events_sent={self._hec_events_sent} "
+            f"events_failed={self._hec_events_failed} "
+            f"retries={self._hec_retries}"
+        )
+
+
+def _build_egress_writer(
+    helper,
+    ew,
+    output_mode: str,
+    sourcetype: str,
+    index: str,
+    hec_endpoint: str,
+    hec_token: str,
+    hec_verify_tls: bool,
+    hec_batch_max_events: int,
+    hec_batch_max_bytes: int,
+    hec_flush_interval_ms: int,
+    hec_retry_max_attempts: int,
+    hec_retry_backoff_ms: int,
+):
+    """Return the active egress writer.
+
+    `modinput_single_event` preserves current behavior.
+    `hec_batch` enables batch POSTs to HEC.
+    """
+    normalized_mode = (output_mode or "modinput_single_event").strip().lower()
+    if normalized_mode == "hec_batch":
+        return _HecBatchWriter(
+            helper=helper,
+            endpoint=hec_endpoint,
+            token=hec_token,
+            verify_tls=hec_verify_tls,
+            batch_max_events=hec_batch_max_events,
+            batch_max_bytes=hec_batch_max_bytes,
+            flush_interval_ms=hec_flush_interval_ms,
+            retry_max_attempts=hec_retry_max_attempts,
+            retry_backoff_ms=hec_retry_backoff_ms,
+            sourcetype=sourcetype,
+            index=index,
+        )
+    return _ModInputSingleEventWriter(helper, ew, sourcetype, index)
+
+
 # ───────────────────────────────────────────────────────────────────────────
 # UCC entry points
 # ───────────────────────────────────────────────────────────────────────────
@@ -228,6 +500,44 @@ def validate_input(helper, definition) -> None:
     except (ValueError, TypeError):
         raise ValueError("Reconnect Interval must be a positive integer.")
 
+    batch_mode = _is_true(params.get("batch_mode", "0"))
+    output_mode = "hec_batch" if batch_mode else "modinput_single_event"
+
+    if output_mode == "hec_batch":
+        hec_endpoint = str(params.get("hec_endpoint", "")).strip()
+        if not hec_endpoint:
+            raise ValueError("HEC Endpoint is required when Output Mode is hec_batch.")
+
+        hec_token = str(params.get("hec_token", "")).strip()
+        if not hec_token:
+            raise ValueError("HEC Token is required when Output Mode is hec_batch.")
+        if not _HEC_TOKEN_REGEX.fullmatch(hec_token):
+            raise ValueError(
+                "HEC Token must be 1-64 chars and contain only letters, "
+                "digits, or '-'."
+            )
+
+    _parse_positive_int(
+        params.get("hec_batch_max_events", "500"),
+        "HEC Batch Max Events",
+    )
+    _parse_positive_int(
+        params.get("hec_batch_max_bytes", "1048576"),
+        "HEC Batch Max Bytes",
+    )
+    _parse_positive_int(
+        params.get("hec_flush_interval_ms", "250"),
+        "HEC Flush Interval",
+    )
+    _parse_positive_int(
+        params.get("hec_retry_max_attempts", "5"),
+        "HEC Retry Max Attempts",
+    )
+    _parse_positive_int(
+        params.get("hec_retry_backoff_ms", "200"),
+        "HEC Retry Backoff",
+    )
+
 
 def collect_events(helper, ew) -> None:
     """
@@ -246,6 +556,39 @@ def collect_events(helper, ew) -> None:
     qos = int(helper.get_arg("qos") or 0)
     sourcetype = helper.get_arg("sourcetype") or "mqtt:message"
     index = helper.get_arg("index") or "default"
+    batch_mode_enabled = _is_true(helper.get_arg("batch_mode") or "0")
+    output_mode = "hec_batch" if batch_mode_enabled else "modinput_single_event"
+
+    hec_endpoint = (
+        helper.get_arg("hec_endpoint")
+        or "https://localhost:8088/services/collector/event"
+    ).strip()
+    hec_token = (helper.get_arg("hec_token") or "").strip()
+    hec_verify_tls = _is_true(helper.get_arg("hec_verify_tls") or "1")
+    hec_batch_max_events = _parse_positive_int(
+        helper.get_arg("hec_batch_max_events") or "500",
+        "HEC Batch Max Events",
+    )
+    hec_batch_max_bytes = _parse_positive_int(
+        helper.get_arg("hec_batch_max_bytes") or "1048576",
+        "HEC Batch Max Bytes",
+    )
+    hec_flush_interval_ms = _parse_positive_int(
+        helper.get_arg("hec_flush_interval_ms") or "250",
+        "HEC Flush Interval",
+    )
+    hec_retry_max_attempts = _parse_positive_int(
+        helper.get_arg("hec_retry_max_attempts") or "5",
+        "HEC Retry Max Attempts",
+    )
+    hec_retry_backoff_ms = _parse_positive_int(
+        helper.get_arg("hec_retry_backoff_ms") or "200",
+        "HEC Retry Backoff",
+    )
+
+    if output_mode == "hec_batch" and (not hec_endpoint or not hec_token):
+        helper.log_error("output_mode='hec_batch' requires hec_endpoint and hec_token.")
+        return
     client_id = helper.get_arg("mqtt_client_id") or ""
     if str(client_id).strip().lower() == "auto":
         client_id = ""
@@ -262,7 +605,7 @@ def collect_events(helper, ew) -> None:
 
     helper.log_info(
         f"Starting MQTT input  broker={broker_name!r}  topic={topic!r}  "
-        f"qos={qos}  client_id={client_id!r}"
+        f"qos={qos}  client_id={client_id!r}  batch_mode={'1' if batch_mode_enabled else '0'}"
     )
 
     # ── Broker configuration ──────────────────────────────────────────────
@@ -513,6 +856,21 @@ def collect_events(helper, ew) -> None:
 
     # ── TLS / mTLS setup ──────────────────────────────────────────────────
     with _TLSSetup(broker_cfg) as tls:
+        egress_writer = _build_egress_writer(
+            helper=helper,
+            ew=ew,
+            output_mode=output_mode,
+            sourcetype=sourcetype,
+            index=index,
+            hec_endpoint=hec_endpoint,
+            hec_token=hec_token,
+            hec_verify_tls=hec_verify_tls,
+            hec_batch_max_events=hec_batch_max_events,
+            hec_batch_max_bytes=hec_batch_max_bytes,
+            hec_flush_interval_ms=hec_flush_interval_ms,
+            hec_retry_max_attempts=hec_retry_max_attempts,
+            hec_retry_backoff_ms=hec_retry_backoff_ms,
+        )
         if tls.enabled:
             client.tls_set_context(tls.context)
             skip = _is_true(broker_cfg.get("skip_verify", "0"))
@@ -553,19 +911,10 @@ def collect_events(helper, ew) -> None:
                             break
 
                     for enqueued_at, event_dict in pending_items:
-                        splunk_event = helper.new_event(
-                            data=json.dumps(event_dict, ensure_ascii=False),
-                            time=None,  # let Splunk assign _time = now
-                            host=host,
-                            source=f"mqtt://{host}:{port}/{event_dict['topic']}",
-                            sourcetype=sourcetype,
-                            index=index,
-                            done=True,
-                            unbroken=True,
-                        )
-                        ew.write_event(splunk_event)
+                        egress_writer.write(event_dict=event_dict, host=host, port=port)
                         _record_write(max(0.0, time.monotonic() - enqueued_at))
 
+                    egress_writer.flush(force=False)
                     _maybe_log_health()
 
             except Exception as exc:
@@ -575,6 +924,7 @@ def collect_events(helper, ew) -> None:
             finally:
                 # Always stop paho's network thread before sleeping / exiting
                 try:
+                    egress_writer.flush(force=True)
                     client.loop_stop()
                     client.disconnect()
                 except Exception:
@@ -584,6 +934,7 @@ def collect_events(helper, ew) -> None:
                     f"Waiting {interval}s before reconnecting to {host}:{port}."
                 )
                 time.sleep(interval)
+        egress_writer.close()
 
     _maybe_log_health(force=True)
     helper.log_info(f"MQTT input for broker '{broker_name}' stopped.")
