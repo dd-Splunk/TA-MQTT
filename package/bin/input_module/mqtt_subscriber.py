@@ -27,6 +27,7 @@ import json
 import logging
 import os
 import queue
+import re
 import ssl
 import sys
 import tempfile
@@ -51,6 +52,7 @@ logger = logging.getLogger(__name__)
 
 _TRUTHY = {"1", "true", "yes", "on"}
 _OUTPUT_MODES = {"modinput_single_event", "hec_batch"}
+_HEC_TOKEN_REGEX = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]{0,63}$")
 _HEALTH_LOG_INTERVAL_SECS = 60.0
 _QUEUE_GET_TIMEOUT_SECS = 1.0
 _QUEUE_DRAIN_BATCH_SIZE = 200
@@ -374,9 +376,10 @@ class _HecBatchWriter(_EgressWriter):
         self._hec_events_failed += events_in_batch
         raise RuntimeError(f"HEC batch send failed after retries: {last_error}")
 
-    def flush(self, force: bool = False) -> None:
+    def flush(self, force: bool = False) -> bool:
+        """Flush the buffer if conditions are met.  Returns True if a flush was performed."""
         if not self._buffer_lines:
-            return
+            return False
 
         if not force:
             elapsed_ms = (time.monotonic() - self._last_flush_monotonic) * 1000.0
@@ -385,7 +388,7 @@ class _HecBatchWriter(_EgressWriter):
                 and self._buffer_bytes < self._batch_max_bytes
                 and elapsed_ms < self._flush_interval_ms
             ):
-                return
+                return False
 
         lines = self._buffer_lines
         buffered_bytes = self._buffer_bytes
@@ -408,6 +411,7 @@ class _HecBatchWriter(_EgressWriter):
                 "HEC batch flush failed; dropping buffered events "
                 f"events={events_in_batch} error={exc}"
             )
+        return True
 
     def close(self) -> None:
         self.flush(force=True)
@@ -496,14 +500,8 @@ def validate_input(helper, definition) -> None:
     except (ValueError, TypeError):
         raise ValueError("Reconnect Interval must be a positive integer.")
 
-    output_mode = (
-        str(params.get("output_mode", "modinput_single_event")).strip().lower()
-    )
     batch_mode = _is_true(params.get("batch_mode", "0"))
-    if batch_mode:
-        output_mode = "hec_batch"
-    if output_mode not in _OUTPUT_MODES:
-        raise ValueError("Output Mode must be 'modinput_single_event' or 'hec_batch'.")
+    output_mode = "hec_batch" if batch_mode else "modinput_single_event"
 
     if output_mode == "hec_batch":
         hec_endpoint = str(params.get("hec_endpoint", "")).strip()
@@ -513,6 +511,11 @@ def validate_input(helper, definition) -> None:
         hec_token = str(params.get("hec_token", "")).strip()
         if not hec_token:
             raise ValueError("HEC Token is required when Output Mode is hec_batch.")
+        if not _HEC_TOKEN_REGEX.fullmatch(hec_token):
+            raise ValueError(
+                "HEC Token must be 1-64 chars and contain only letters, "
+                "digits, or '-'."
+            )
 
     _parse_positive_int(
         params.get("hec_batch_max_events", "500"),
@@ -553,11 +556,9 @@ def collect_events(helper, ew) -> None:
     qos = int(helper.get_arg("qos") or 0)
     sourcetype = helper.get_arg("sourcetype") or "mqtt:message"
     index = helper.get_arg("index") or "default"
-    output_mode = (
-        (helper.get_arg("output_mode") or "modinput_single_event").strip().lower()
-    )
-    if _is_true(helper.get_arg("batch_mode") or "0"):
-        output_mode = "hec_batch"
+    batch_mode_enabled = _is_true(helper.get_arg("batch_mode") or "0")
+    output_mode = "hec_batch" if batch_mode_enabled else "modinput_single_event"
+
     hec_endpoint = (
         helper.get_arg("hec_endpoint")
         or "https://localhost:8088/services/collector/event"
@@ -585,12 +586,6 @@ def collect_events(helper, ew) -> None:
         "HEC Retry Backoff",
     )
 
-    if output_mode not in _OUTPUT_MODES:
-        helper.log_warning(
-            f"Unsupported output_mode={output_mode!r}; using modinput_single_event."
-        )
-        output_mode = "modinput_single_event"
-
     if output_mode == "hec_batch" and (not hec_endpoint or not hec_token):
         helper.log_error("output_mode='hec_batch' requires hec_endpoint and hec_token.")
         return
@@ -610,7 +605,7 @@ def collect_events(helper, ew) -> None:
 
     helper.log_info(
         f"Starting MQTT input  broker={broker_name!r}  topic={topic!r}  "
-        f"qos={qos}  client_id={client_id!r}  output_mode={output_mode!r}"
+        f"qos={qos}  client_id={client_id!r}  batch_mode={'1' if batch_mode_enabled else '0'}"
     )
 
     # ── Broker configuration ──────────────────────────────────────────────

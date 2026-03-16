@@ -2,14 +2,14 @@
 
 ## Scope
 
-Quick functional smoke validation of the new egress mode switch in:
+Quick functional smoke validation of the new per-input batch-mode switch in:
 
 - `package/bin/input_module/mqtt_subscriber.py`
 
 Validated paths:
 
-1. `output_mode=modinput_single_event`
-2. `output_mode=hec_batch`
+1. `batch_mode=0`
+2. `batch_mode=1`
 3. Dockerized Splunk HEC endpoint availability and indexing check
 
 ## Test Method
@@ -92,12 +92,12 @@ Build result:
 Post-build smoke checks:
 
 - `artifacts/r1_smoke_test.py` remained green:
-	- `single_event_events_written= 1`
-	- `hec_lines= 2`
-	- `helper_error_logs= 0`
+  - `single_event_events_written= 1`
+  - `hec_lines= 2`
+  - `helper_error_logs= 0`
 - Real HEC ingest with new token (`ta_mqtt_r1_postbuild`) succeeded:
-	- HEC response: `{"text":"Success","code":0}`
-	- Search verification: `search index=main "r1_postbuild_smoke" | stats count` -> `count=1`
+  - HEC response: `{"text":"Success","code":0}`
+  - Search verification: `search index=main "r1_postbuild_smoke" | stats count` -> `count=1`
 
 Conclusion:
 
@@ -109,10 +109,83 @@ Not covered by this smoke validation:
 
 - High-load/soak behavior.
 - Retry/backoff behavior against failing HEC responses.
-- R1 UI fields were temporarily removed from `globalConfig.json` inputs to keep UCC build compatibility while validating runtime behavior.
+
+## Post-Normalization Rerun (2026-03-16)
+
+After the per-input schema normalization (`batch_mode` + per-input HEC fields), the rebuild and smoke sequence was rerun.
+
+Execution order:
+
+1. `ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 1.2.0`
+2. `python artifacts/r1_smoke_test.py`
+3. Docker-backed HEC ingest/index verification via Splunk container
+
+Observed outputs:
+
+- Build: `globalConfig file is valid` and app artifacts regenerated successfully.
+- Local harness: all scenarios passed (happy path, 500 retry/drop, HEC code!=0 retry/drop, time-based flush).
+- Docker-backed verification:
+  - `HEC_RESPONSE={"text":"Success","code":0}`
+  - `SEARCH_MARKER=r1_postnorm_smoke_1773665288`
+  - `SEARCH_COUNT=1`
+
+Interpretation:
+
+- The required rebuild-first flow has now been reconfirmed with the normalized configuration model.
+- Dockerized end-to-end HEC ingest and indexing remain functional post-normalization.
+
+### Fresh rebuild rerun (2026-03-16)
+
+After a full clean rebuild (`rm -rf output/TA-MQTT` + `ucc-gen build`), Docker-backed smoke was rerun.
+
+Observed outputs:
+
+- `TOKEN_NAME=ta_mqtt_r1_freshbuild_1773666616`
+- `HEC_RESPONSE={"text":"Success","code":0}`
+- `SEARCH_MARKER=r1_freshbuild_smoke_1773666617`
+- `SEARCH_COUNT=1`
+- `SEARCH_FOUND=1`
+
+Interpretation:
+
+- Freshly generated output artifacts preserve end-to-end HEC ingest and indexing behavior.
+
+## Performance Retest — 5000 msgs/s for 60s (2026-03-16)
+
+This retest was run after resolving the configuration-page breakage and rebuilding the TA.
+
+Run setup:
+
+- Publisher script: `tools/mqtt_load_test.py`
+- Target rate: `5000 msgs/s`
+- Duration: `60s`
+- Clients: `20`
+- Topic: `home/devices/load5000r2/telemetry`
+- Artifact log: `artifacts/loadtest_5000ms_60s_20260316_145718.log`
+
+Key results:
+
+- Published: `300442`
+- Publish errors: `0`
+- Connect errors: `0`
+- Disconnects: `0`
+- Final publisher throughput: `4917.16 msgs/s` over `61.1s`
+- Indexed count for test topic: `300442`
+- End-to-end indexing coverage: `100.00%`
+- Indexed EPS over 60s: `5007.37`
+
+Subscriber-side runtime summary rollup (`index=_internal`):
+
+- `recv_total=300451`
+- `written_total=300451`
+- `dropped_total=0`
+
+Important test-context note:
+
+- An earlier 5000 msgs/s run showed `0` indexed because the active input broker was pointing to an external host (`192.168.1.21`) instead of local `mosquitto`.
+- After repointing broker stanza `mc` to `mosquitto:1883` and restarting Splunk, the retest above produced full end-to-end coverage.
 
 ## Next Validation Steps
 
-1. Reintroduce R1 UI fields in a UCC-schema-compatible way without breaking `ucc-gen build`.
-2. Add failure-path smoke cases (HTTP 5xx / HEC code != 0 / timeout).
-3. Execute comparative throughput runs at identical publish rates.
+1. Add explicit failure-path coverage for timeout/network interruption (in addition to current 500 and HEC code!=0 harness checks).
+2. Execute comparative throughput runs at 1000/2000/5000 msgs/s with the same local broker target and capture percentile lag from runtime summaries.
