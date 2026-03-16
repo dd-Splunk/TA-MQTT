@@ -2,6 +2,14 @@
 
 All notable changes to TA-MQTT should be documented in this file.
 
+## [2.0.1] - 2026-03-16
+
+### Fixed in 2.0.1
+
+- Fixed input name validation to allow dashes (e.g., `dd-auto-hec`).
+- Hidden `batch_mode` field from input create/edit forms (always HEC batch writer).
+- Fixed REST handler class configuration to properly invoke auto-token generation hooks.
+
 ## [2.0.0] - 2026-03-16
 
 ### Added in 2.0.0

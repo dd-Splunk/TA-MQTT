@@ -2,7 +2,7 @@
     "meta": {
         "name": "TA-MQTT",
         "restRoot": "TA_MQTT",
-        "version": "2.0.0",
+        "version": "2.0.1",
         "displayName": "MQTT Broker Add-on for Splunk",
         "schemaVersion": "0.0.10"
     },
@@ -272,8 +272,8 @@
                                 },
                                 {
                                     "type": "regex",
-                                    "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
-                                    "errorMsg": "Must start with a letter and contain only letters, digits, and underscores."
+                                    "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
+                                    "errorMsg": "Must start with a letter and contain only letters, digits, underscores, and dashes."
                                 }
                             ]
                         },
@@ -398,21 +398,18 @@
                             "label": "Batch Output Mode",
                             "type": "singleSelect",
                             "required": false,
-                            "defaultValue": "0",
-                            "help": "Select whether this input uses the current single-event writer or buffered HEC batch egress.",
+                            "defaultValue": "1",
+                            "help": "This input uses buffered HEC batch egress (always enabled).",
                             "validators": [
                                 {
                                     "type": "regex",
-                                    "pattern": "^[01]$",
-                                    "errorMsg": "Batch Output Mode must be 0 or 1."
+                                    "pattern": "^1$",
+                                    "errorMsg": "Batch Output Mode must be 1."
                                 }
                             ],
                             "options": {
+                                "display": false,
                                 "autoCompleteFields": [
-                                    {
-                                        "value": "0",
-                                        "label": "0 - single-event modular input writer"
-                                    },
                                     {
                                         "value": "1",
                                         "label": "1 - HEC batch writer"

@@ -1,0 +1,8 @@
+[]
+access = read : [ * ], write : [ admin, power ]
+
+[inputs/mqtt_subscriber]
+access = read : [ * ], write : [ admin, power ]
+
+[admin/mqtt_broker]
+access = read : [ * ], write : [ admin ]
