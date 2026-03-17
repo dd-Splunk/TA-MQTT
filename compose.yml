@@ -7,8 +7,8 @@ services:
       - "8883:8883"
       - "8884:8884"
     volumes:
-      - ./tools/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
-      - ./tools/certs/mosquitto:/mosquitto/config/certs:ro
+      - ./tools/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./tools/certs/mosquitto:/mosquitto/config/certs
     restart: unless-stopped
 
   splunk:
