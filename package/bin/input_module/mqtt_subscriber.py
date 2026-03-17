@@ -33,6 +33,7 @@ import sys
 import tempfile
 import threading
 import time
+import urllib.parse
 import urllib.request
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -57,6 +58,7 @@ _HEALTH_LOG_INTERVAL_SECS = 60.0
 _QUEUE_GET_TIMEOUT_SECS = 1.0
 _QUEUE_DRAIN_BATCH_SIZE = 200
 _DROP_WARNING_INTERVAL_SECS = 30.0
+_HEC_COLLECTION_PATH = "/servicesNS/nobody/splunk_httpinput/data/inputs/http"
 
 
 def _is_true(value: Any) -> bool:
@@ -116,6 +118,128 @@ def _get_broker_config(helper, broker_name: str) -> Dict[str, str]:
             f"Broker '{broker_name}' not found in {conf_name}.conf.  "
             "Please create it on the Configuration → MQTT Brokers page."
         )
+
+
+def _splunk_rest_json(helper, method: str, path: str, payload=None) -> Dict[str, Any]:
+    mgmt_port = int(os.environ.get("SPLUNK_MGMT_PORT", "8089"))
+    session_key = helper.context_meta.get("session_key", "")
+    if not session_key:
+        raise RuntimeError("Splunk session key is not available.")
+
+    url = f"https://localhost:{mgmt_port}{path}"
+    body = None
+    if payload is not None:
+        body = urllib.parse.urlencode(payload).encode("utf-8")
+
+    request = urllib.request.Request(
+        url,
+        data=body,
+        headers={"Authorization": f"Splunk {session_key}"},
+        method=method,
+    )
+    with urllib.request.urlopen(
+        request,
+        timeout=10,
+        context=ssl._create_unverified_context(),
+    ) as response:
+        response_body = response.read().decode("utf-8", errors="replace")
+    if not response_body:
+        return {}
+    return json.loads(response_body)
+
+
+def _hec_token_name(stanza_name: str) -> str:
+    return f"ta_mqtt_{stanza_name}"
+
+
+def _get_input_stanza_name(helper) -> str:
+    raw_stanza_names = helper.get_input_stanza_names()
+    if isinstance(raw_stanza_names, str):
+        return raw_stanza_names
+    try:
+        return next(iter(raw_stanza_names))
+    except Exception:
+        return "splunk"
+
+
+def _lookup_hec_token(helper, stanza_name: str) -> str:
+    response = _splunk_rest_json(
+        helper,
+        "GET",
+        f"{_HEC_COLLECTION_PATH}?output_mode=json&count=0",
+    )
+    wanted_name = f"http://{_hec_token_name(stanza_name)}"
+    for entry in response.get("entry", []):
+        if entry.get("name") == wanted_name:
+            return entry.get("content", {}).get("token", "")
+    return ""
+
+
+def _create_hec_token(helper, stanza_name: str, index: str, sourcetype: str) -> str:
+    request_payload = {
+        "name": _hec_token_name(stanza_name),
+        "index": index,
+        "indexes": index,
+    }
+    if sourcetype:
+        request_payload["sourcetype"] = sourcetype
+
+    response = _splunk_rest_json(
+        helper,
+        "POST",
+        f"{_HEC_COLLECTION_PATH}?output_mode=json",
+        payload=request_payload,
+    )
+    return response.get("entry", [{}])[0].get("content", {}).get("token", "")
+
+
+def _persist_input_hec_token(helper, stanza_name: str, hec_token: str) -> None:
+    try:
+        import splunklib.client as splunk_client  # type: ignore
+    except ImportError as exc:
+        raise RuntimeError("splunklib is not available.") from exc
+
+    mgmt_port = int(os.environ.get("SPLUNK_MGMT_PORT", "8089"))
+    session_key = helper.context_meta.get("session_key", "")
+    if not session_key:
+        raise RuntimeError("Splunk session key is not available.")
+
+    service = splunk_client.connect(
+        host="localhost",
+        port=mgmt_port,
+        token=session_key,
+        owner="nobody",
+        app="TA-MQTT",
+        scheme="https",
+    )
+    service.confs["inputs"][f"mqtt_subscriber://{stanza_name}"].update(
+        hec_token=hec_token
+    )
+
+
+def _ensure_runtime_hec_token(
+    helper,
+    stanza_name: str,
+    index: str,
+    sourcetype: str,
+    current_token: str,
+) -> str:
+    actual_token = _lookup_hec_token(helper, stanza_name)
+    if not actual_token:
+        actual_token = _create_hec_token(helper, stanza_name, index, sourcetype)
+        if not actual_token:
+            raise RuntimeError(
+                f"Failed to provision a Splunk HEC token for input '{stanza_name}'."
+            )
+        helper.log_info(f"Provisioned Splunk HEC token for input '{stanza_name}'.")
+
+    if current_token != actual_token:
+        _persist_input_hec_token(helper, stanza_name, actual_token)
+        helper.log_info(
+            f"Updated persisted HEC token for input '{stanza_name}' to the active Splunk token."
+        )
+
+    return actual_token
 
 
 class _TLSSetup:
@@ -586,22 +710,32 @@ def collect_events(helper, ew) -> None:
         "HEC Retry Backoff",
     )
 
-    if output_mode == "hec_batch" and (not hec_endpoint or not hec_token):
-        helper.log_error("output_mode='hec_batch' requires hec_endpoint and hec_token.")
-        return
     client_id = helper.get_arg("mqtt_client_id") or ""
     if str(client_id).strip().lower() == "auto":
         client_id = ""
     interval = int(helper.get_arg("interval") or 30)
+    stanza_name = _get_input_stanza_name(helper)
 
     # Derive a unique, deterministic client ID from the input stanza name
     # when the user has not specified one explicitly.
     if not client_id:
-        try:
-            stanza_name = list(helper.get_input_stanza_names())[0]
-        except Exception:
-            stanza_name = "splunk"
         client_id = f"splunk-ta-mqtt-{stanza_name}"
+
+    if output_mode == "hec_batch":
+        if not hec_endpoint:
+            helper.log_error("output_mode='hec_batch' requires hec_endpoint.")
+            return
+        try:
+            hec_token = _ensure_runtime_hec_token(
+                helper=helper,
+                stanza_name=stanza_name,
+                index=index,
+                sourcetype=sourcetype,
+                current_token=hec_token,
+            )
+        except Exception as exc:
+            helper.log_error(f"Unable to provision a valid HEC token: {exc}")
+            return
 
     helper.log_info(
         f"Starting MQTT input  broker={broker_name!r}  topic={topic!r}  "
