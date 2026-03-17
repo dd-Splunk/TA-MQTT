@@ -23,6 +23,7 @@ Anonymous access: leave username & password empty on the broker configuration.
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import os
@@ -77,6 +78,40 @@ def _parse_positive_int(raw_value: Any, field_name: str) -> int:
     if parsed_value < 1:
         raise ValueError(f"{field_name} must be a positive integer.")
     return parsed_value
+
+
+def _decode_payload(payload_bytes: Any) -> Dict[str, Any]:
+    """Decode MQTT payload with explicit fallback metadata for non-UTF bytes."""
+    if payload_bytes in (None, b""):
+        return {
+            "payload": "",
+            "payload_encoding": "utf-8",
+            "payload_decode_fallback": False,
+        }
+
+    if isinstance(payload_bytes, str):
+        return {
+            "payload": payload_bytes,
+            "payload_encoding": "utf-8",
+            "payload_decode_fallback": False,
+        }
+
+    try:
+        payload_text = payload_bytes.decode("utf-8")
+        return {
+            "payload": payload_text,
+            "payload_encoding": "utf-8",
+            "payload_decode_fallback": False,
+        }
+    except (UnicodeDecodeError, AttributeError):
+        fallback_text = payload_bytes.decode("utf-8", errors="replace")
+        payload_b64 = base64.b64encode(payload_bytes).decode("ascii")
+        return {
+            "payload": fallback_text,
+            "payload_encoding": "utf-8-replace",
+            "payload_decode_fallback": True,
+            "payload_base64": payload_b64,
+        }
 
 
 def _get_broker_config(helper, broker_name: str) -> Dict[str, str]:
@@ -946,11 +981,7 @@ def collect_events(helper, ew) -> None:
 
     def on_message(client, userdata, msg):
         """Decode payload and push a structured dict onto the event queue."""
-        # Decode binary payload → UTF-8 string or hex fallback
-        try:
-            payload_str = msg.payload.decode("utf-8")
-        except (UnicodeDecodeError, AttributeError):
-            payload_str = msg.payload.hex() if msg.payload else ""
+        payload_fields = _decode_payload(getattr(msg, "payload", b""))
 
         event_dict = {
             "broker": broker_name,
@@ -959,7 +990,7 @@ def collect_events(helper, ew) -> None:
             "topic": msg.topic,
             "qos": msg.qos,
             "retain": bool(msg.retain),
-            "payload": payload_str,
+            **payload_fields,
         }
         try:
             event_q.put_nowait((time.monotonic(), event_dict))
