@@ -394,6 +394,21 @@
                             ]
                         },
                         {
+                            "field": "queue_maxsize",
+                            "label": "Event Queue Max Size",
+                            "type": "text",
+                            "required": false,
+                            "defaultValue": "10000",
+                            "help": "Maximum number of MQTT events buffered in memory before new messages are dropped.",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^[1-9][0-9]*$",
+                                    "errorMsg": "Event Queue Max Size must be a positive integer."
+                                }
+                            ]
+                        },
+                        {
                             "field": "batch_mode",
                             "label": "Batch Output Mode",
                             "type": "singleSelect",
@@ -562,6 +577,10 @@
                                 "label": "Reconnect (s)"
                             },
                             {
+                                "field": "queue_maxsize",
+                                "label": "Queue Max"
+                            },
+                            {
                                 "field": "batch_mode",
                                 "label": "Batch Mode"
                             }
@@ -594,6 +613,10 @@
                             {
                                 "field": "interval",
                                 "label": "Reconnect Interval"
+                            },
+                            {
+                                "field": "queue_maxsize",
+                                "label": "Event Queue Max Size"
                             },
                             {
                                 "field": "mqtt_client_id",

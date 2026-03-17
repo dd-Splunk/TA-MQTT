@@ -188,6 +188,15 @@ fields = [
         ),
     ),
     field.RestField(
+        "queue_maxsize",
+        required=False,
+        encrypted=False,
+        default="10000",
+        validator=validator.Pattern(
+            regex=r"""^[1-9][0-9]*$""",
+        ),
+    ),
+    field.RestField(
         "batch_mode",
         required=False,
         encrypted=False,

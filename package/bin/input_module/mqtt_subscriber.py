@@ -60,6 +60,7 @@ _QUEUE_GET_TIMEOUT_SECS = 1.0
 _QUEUE_DRAIN_BATCH_SIZE = 200
 _DROP_WARNING_INTERVAL_SECS = 30.0
 _HEC_COLLECTION_PATH = "/servicesNS/nobody/splunk_httpinput/data/inputs/http"
+_DEFAULT_QUEUE_MAXSIZE = 10_000
 
 
 def _is_true(value: Any) -> bool:
@@ -719,6 +720,10 @@ def validate_input(helper, definition) -> None:
         params.get("hec_retry_backoff_ms", "200"),
         "HEC Retry Backoff",
     )
+    _parse_positive_int(
+        params.get("queue_maxsize", str(_DEFAULT_QUEUE_MAXSIZE)),
+        "Event Queue Max Size",
+    )
 
 
 def collect_events(helper, ew) -> None:
@@ -767,6 +772,10 @@ def collect_events(helper, ew) -> None:
         helper.get_arg("hec_retry_backoff_ms") or "200",
         "HEC Retry Backoff",
     )
+    queue_maxsize = _parse_positive_int(
+        helper.get_arg("queue_maxsize") or str(_DEFAULT_QUEUE_MAXSIZE),
+        "Event Queue Max Size",
+    )
 
     client_id = helper.get_arg("mqtt_client_id") or ""
     if str(client_id).strip().lower() == "auto":
@@ -797,7 +806,8 @@ def collect_events(helper, ew) -> None:
 
     helper.log_info(
         f"Starting MQTT input  broker={broker_name!r}  topic={topic!r}  "
-        f"qos={qos}  client_id={client_id!r}  batch_mode={'1' if batch_mode_enabled else '0'}"
+        f"qos={qos}  client_id={client_id!r}  batch_mode={'1' if batch_mode_enabled else '0'} "
+        f"queue_maxsize={queue_maxsize}"
     )
 
     # ── Broker configuration ──────────────────────────────────────────────
@@ -815,7 +825,9 @@ def collect_events(helper, ew) -> None:
     # ── Thread-safe event queue ───────────────────────────────────────────
     # MQTT callbacks run in paho's network thread; Splunk's ew.write_event()
     # should only be called from the main thread → use a queue.
-    event_q: "queue.Queue[Tuple[float, Dict[str, Any]]]" = queue.Queue(maxsize=10_000)
+    event_q: "queue.Queue[Tuple[float, Dict[str, Any]]]" = queue.Queue(
+        maxsize=queue_maxsize
+    )
 
     shutdown_evt = threading.Event()
     stats_lock = threading.Lock()
@@ -964,6 +976,7 @@ def collect_events(helper, ew) -> None:
             f"broker={broker_name!r} recv_delta={received_delta} "
             f"written_delta={written_delta} dropped_delta={dropped_delta} "
             f"reconnect_delta={reconnect_delta} queue_depth={queue_depth} "
+            f"queue_capacity={queue_maxsize} "
             f"queue_high_water={queue_high_water} lag_avg_ms={lag_avg_ms:.2f} "
             f"lag_max_ms={lag_max_ms:.2f}{idle_fragment}{drop_fragment}"
         )
