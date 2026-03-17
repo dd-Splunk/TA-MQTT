@@ -2,6 +2,15 @@
 
 All notable changes to TA-MQTT should be documented in this file.
 
+## [2.1.1] - 2026-03-17
+
+### Changed in 2.1.1
+
+- Improved HEC batch writer shutdown with idempotent close behavior and deterministic close-summary metrics.
+- Improved non-UTF payload handling with explicit decode-fallback metadata and base64 preservation.
+- Improved reconnect resilience with exponential backoff, cooldown behavior, and additional reconnect health metrics.
+- Added configurable per-input MQTT event queue capacity with UI, REST validation, and runtime wiring.
+
 ## [2.1.0] - 2026-03-17
 
 ### Added in 2.1.0
