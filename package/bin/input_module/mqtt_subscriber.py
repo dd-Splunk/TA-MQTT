@@ -61,6 +61,10 @@ _QUEUE_DRAIN_BATCH_SIZE = 200
 _DROP_WARNING_INTERVAL_SECS = 30.0
 _HEC_COLLECTION_PATH = "/servicesNS/nobody/splunk_httpinput/data/inputs/http"
 _DEFAULT_QUEUE_MAXSIZE = 10_000
+_RECONNECT_BACKOFF_BASE_SECS = 1.0
+_RECONNECT_BACKOFF_MAX_SECS = 300.0
+_RECONNECT_COOLDOWN_FAILURE_THRESHOLD = 5
+_RECONNECT_COOLDOWN_SECS = 120.0
 
 
 def _is_true(value: Any) -> bool:
@@ -836,6 +840,9 @@ def collect_events(helper, ew) -> None:
         "messages_written": 0,
         "messages_dropped": 0,
         "reconnect_attempts": 0,
+        "reconnect_consecutive_failures": 0,
+        "reconnect_cooldowns": 0,
+        "reconnect_backoff_s": float(interval),
         "queue_high_water": 0,
         "last_write_monotonic": None,
         "last_health_log": time.monotonic(),
@@ -946,6 +953,11 @@ def collect_events(helper, ew) -> None:
             last_write_monotonic = runtime_stats["last_write_monotonic"]
             queue_high_water = runtime_stats["queue_high_water"]
             last_dropped_topic = runtime_stats["last_dropped_topic"]
+            reconnect_consecutive_failures = runtime_stats[
+                "reconnect_consecutive_failures"
+            ]
+            reconnect_cooldowns = runtime_stats["reconnect_cooldowns"]
+            reconnect_backoff_s = runtime_stats["reconnect_backoff_s"]
 
             runtime_stats["last_health_log"] = now_monotonic
             runtime_stats["last_logged_received"] = runtime_stats["messages_received"]
@@ -977,6 +989,9 @@ def collect_events(helper, ew) -> None:
             f"written_delta={written_delta} dropped_delta={dropped_delta} "
             f"reconnect_delta={reconnect_delta} queue_depth={queue_depth} "
             f"queue_capacity={queue_maxsize} "
+            f"reconnect_consecutive_failures={reconnect_consecutive_failures} "
+            f"reconnect_backoff_s={reconnect_backoff_s:.1f} "
+            f"reconnect_cooldowns={reconnect_cooldowns} "
             f"queue_high_water={queue_high_water} lag_avg_ms={lag_avg_ms:.2f} "
             f"lag_max_ms={lag_max_ms:.2f}{idle_fragment}{drop_fragment}"
         )
@@ -1084,7 +1099,10 @@ def collect_events(helper, ew) -> None:
 
         # ── Main loop ─────────────────────────────────────────────────────
         has_attempted_connection = False
+        consecutive_failures = 0
+        reconnect_sleep_seconds = float(interval)
         while not shutdown_evt.is_set():
+            loop_had_error = False
             try:
                 if has_attempted_connection:
                     _record_reconnect_attempt()
@@ -1092,6 +1110,11 @@ def collect_events(helper, ew) -> None:
                     has_attempted_connection = True
                 helper.log_info(f"Connecting to {host}:{port} …")
                 client.connect(host, port, keepalive=60)
+                consecutive_failures = 0
+                reconnect_sleep_seconds = float(interval)
+                with stats_lock:
+                    runtime_stats["reconnect_consecutive_failures"] = 0
+                    runtime_stats["reconnect_backoff_s"] = reconnect_sleep_seconds
                 client.loop_start()
 
                 # Drain the event queue, writing events to Splunk
@@ -1119,9 +1142,44 @@ def collect_events(helper, ew) -> None:
                     _maybe_log_health()
 
             except Exception as exc:
-                helper.log_error(
-                    f"Error in MQTT loop for broker '{broker_name}': {exc}"
+                loop_had_error = True
+                consecutive_failures += 1
+                reconnect_sleep_seconds = min(
+                    _RECONNECT_BACKOFF_MAX_SECS,
+                    max(
+                        float(interval),
+                        _RECONNECT_BACKOFF_BASE_SECS
+                        * (2 ** (consecutive_failures - 1)),
+                    ),
                 )
+
+                cooldown_applied = (
+                    consecutive_failures >= _RECONNECT_COOLDOWN_FAILURE_THRESHOLD
+                )
+                if cooldown_applied:
+                    reconnect_sleep_seconds = max(
+                        reconnect_sleep_seconds, _RECONNECT_COOLDOWN_SECS
+                    )
+
+                with stats_lock:
+                    runtime_stats[
+                        "reconnect_consecutive_failures"
+                    ] = consecutive_failures
+                    runtime_stats["reconnect_backoff_s"] = reconnect_sleep_seconds
+                    if cooldown_applied:
+                        runtime_stats["reconnect_cooldowns"] += 1
+
+                helper.log_error(
+                    f"Error in MQTT loop for broker '{broker_name}': {exc}. "
+                    f"consecutive_failures={consecutive_failures} "
+                    f"next_retry_in_s={reconnect_sleep_seconds:.1f}"
+                )
+                if cooldown_applied:
+                    helper.log_warning(
+                        "Reconnect cooldown applied due to repeated failures "
+                        f"threshold={_RECONNECT_COOLDOWN_FAILURE_THRESHOLD} "
+                        f"cooldown_s={reconnect_sleep_seconds:.1f}"
+                    )
             finally:
                 # Always stop paho's network thread before sleeping / exiting
                 try:
@@ -1131,10 +1189,14 @@ def collect_events(helper, ew) -> None:
                 except Exception:
                     pass
             if not shutdown_evt.is_set():
-                helper.log_info(
-                    f"Waiting {interval}s before reconnecting to {host}:{port}."
+                sleep_before_retry = (
+                    reconnect_sleep_seconds if loop_had_error else float(interval)
                 )
-                time.sleep(interval)
+                helper.log_info(
+                    f"Waiting {sleep_before_retry:.1f}s before reconnecting to "
+                    f"{host}:{port}."
+                )
+                time.sleep(sleep_before_retry)
         egress_writer.close()
 
     _maybe_log_health(force=True)
