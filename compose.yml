@@ -4,8 +4,11 @@ services:
     container_name: mosquitto
     ports:
       - "1883:1883"
+      - "8883:8883"
+      - "8884:8884"
     volumes:
       - ./tools/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./tools/certs/mosquitto:/mosquitto/config/certs:ro
     restart: unless-stopped
 
   splunk:

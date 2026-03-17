@@ -44,6 +44,14 @@ htmlcov/
 .env
 .env.*
 *.local
+*.key
+*.p8
+*.p12
+*.pfx
+*.pkcs12
+*.crt
+*.cer
+*.pem
 
 # OS / editor
 .DS_Store
@@ -56,3 +64,4 @@ output/*
 artifacts/*
 !artifacts/.gitkeep
 .splunk-persist/
+tools/certs/
