@@ -2,6 +2,18 @@
 
 All notable changes to TA-MQTT should be documented in this file.
 
+## [2.1.0] - 2026-03-17
+
+### Added in 2.1.0
+
+- Added robust per-input Splunk HEC token lifecycle management in both REST hooks and modular input runtime.
+
+### Fixed in 2.1.0
+
+- Fixed runtime stanza-name handling so full input names are used for client IDs and token mapping.
+- Fixed runtime token self-heal persistence by updating `inputs.conf` through Splunk's conf API.
+- Fixed `Telemetrie` broker targeting by aligning `mc` with `192.168.1.21:1883` in local validation config.
+
 ## [2.0.1] - 2026-03-16
 
 ### Fixed in 2.0.1
