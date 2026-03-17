@@ -3,15 +3,8 @@
 TA-MQTT is a Splunk Technical Add-on that subscribes to MQTT topics and writes
 messages into Splunk with sourcetype `mqtt:message`.
 
-Performance testing is migrating toward a repo-local JMeter MQTT publisher
-workflow under `tools/jmeter/`. The repository currently keeps
-`tools/mqtt_load_test.py` as a fallback tool for parity checks and quick local
-smoke tests.
-
-The current implementation uses one modular-input process per stanza. Each
-stanza runs its own MQTT client, receives messages on paho-mqtt's network
-thread, buffers them through a bounded in-memory queue, and writes events to
-Splunk from a single writer path in the main thread.
+This README is intentionally brief. Detailed operational and developer guidance
+lives under `docs/`.
 
 ## Features
 
@@ -19,8 +12,8 @@ Splunk from a single writer path in the main thread.
 - Anonymous, username/password, TLS, and mTLS connectivity
 - QoS 0/1/2 subscriptions with wildcard topics
 - JSON event envelope with consistent metadata (`broker`, `mqtt_host`, `topic`, etc.)
-- Search-time payload field extraction for common telemetry keys
-- Periodic runtime health metrics for queue depth, lag, drops, reconnects, and throughput
+- Configurable queue capacity, reconnect backoff/cooldown resilience, and runtime health metrics
+- HEC batch egress with per-input token lifecycle management
 - Local Docker test stack with Splunk and Mosquitto for repeatable validation
 
 ## Quick Start
@@ -29,51 +22,11 @@ Splunk from a single writer path in the main thread.
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements-build.txt
-./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 1.2.0
+./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 2.1.1
 docker compose up -d
 ```
 
 Local development and CI builds are pinned to Python 3.13.
-
-## Secret Scanning (Pre-commit)
-
-This repository includes a `gitleaks` pre-commit hook in `.pre-commit-config.yaml`.
-
-```bash
-python -m pip install pre-commit
-pre-commit install
-pre-commit run --all-files
-```
-
-The hook runs on every commit and blocks commits that contain detected secrets
-(for example, private keys and tokens).
-
-Open Splunk Web at `http://localhost:8000`, then configure a broker and create
-an input. The bundled local Docker Compose stack also exposes a Mosquitto broker
-on `localhost:1883` for development and performance testing.
-
-## Current Architecture
-
-- One Splunk modular-input process per `mqtt_subscriber` stanza.
-- One paho-mqtt client per stanza using a background network thread.
-- One bounded queue (`maxsize=10000`) between the MQTT callback thread and the Splunk writer path.
-- Blocking queue reads with bounded draining instead of fixed polling sleeps.
-- Runtime health logs emitted every 60 seconds with throughput, lag, and queue metrics.
-
-The primary source implementation lives in `package/bin/input_module/mqtt_subscriber.py`.
-Generated runtime files are produced under `output/TA-MQTT/` by `ucc-gen build`.
-
-## Rebuild Workflow
-
-When app files are bind-mounted into Docker, always rebuild using a clean output
-directory:
-
-```bash
-docker compose stop splunk
-rm -rf output/TA-MQTT
-./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 1.2.0
-docker compose up -d splunk
-```
 
 ## Repository Layout
 
@@ -90,6 +43,8 @@ docker compose up -d splunk
 - [Troubleshooting](docs/troubleshooting.md)
 - [Performance Testing](docs/performance-testing.md)
 - [JMeter Migration Status](docs/jmeter-migration.md)
+- [TLS/mTLS Test Plan](docs/test-plan-mqtt-tls-mtls.md)
+- [TLS/mTLS Test Evidence](docs/test-evidence-mqtt-tls-mtls.md)
 
 ## CI/CD and Releases
 
