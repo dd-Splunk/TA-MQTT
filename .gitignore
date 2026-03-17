@@ -44,6 +44,11 @@ htmlcov/
 .env
 .env.*
 *.local
+*.key
+*.p8
+*.p12
+*.pfx
+*.pkcs12
 
 # OS / editor
 .DS_Store

@@ -35,6 +35,19 @@ docker compose up -d
 
 Local development and CI builds are pinned to Python 3.13.
 
+## Secret Scanning (Pre-commit)
+
+This repository includes a `gitleaks` pre-commit hook in `.pre-commit-config.yaml`.
+
+```bash
+python -m pip install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
+
+The hook runs on every commit and blocks commits that contain detected secrets
+(for example, private keys and tokens).
+
 Open Splunk Web at `http://localhost:8000`, then configure a broker and create
 an input. The bundled local Docker Compose stack also exposes a Mosquitto broker
 on `localhost:1883` for development and performance testing.
