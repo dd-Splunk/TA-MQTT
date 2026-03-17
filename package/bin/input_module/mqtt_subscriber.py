@@ -404,6 +404,8 @@ class _HecBatchWriter(_EgressWriter):
         self._hec_events_sent = 0
         self._hec_events_failed = 0
         self._hec_retries = 0
+        self._closed = False
+        self._close_calls = 0
 
     def _build_hec_payload_line(
         self,
@@ -538,15 +540,36 @@ class _HecBatchWriter(_EgressWriter):
         return True
 
     def close(self) -> None:
-        self.flush(force=True)
-        self._helper.log_info(
-            "HEC batch writer summary "
-            f"batches_sent={self._hec_batches_sent} "
-            f"batches_failed={self._hec_batches_failed} "
-            f"events_sent={self._hec_events_sent} "
-            f"events_failed={self._hec_events_failed} "
-            f"retries={self._hec_retries}"
-        )
+        self._close_calls += 1
+        if self._closed:
+            self._helper.log_debug(
+                "HEC batch writer close called after writer already closed; "
+                f"close_calls={self._close_calls}"
+            )
+            return
+
+        buffered_events_before_close = len(self._buffer_lines)
+        buffered_bytes_before_close = self._buffer_bytes
+        flushed_on_close = False
+
+        try:
+            flushed_on_close = self.flush(force=True)
+        finally:
+            self._closed = True
+            self._helper.log_info(
+                "HEC batch writer summary "
+                f"close_calls={self._close_calls} "
+                f"flushed_on_close={1 if flushed_on_close else 0} "
+                f"buffered_events_before_close={buffered_events_before_close} "
+                f"buffered_bytes_before_close={buffered_bytes_before_close} "
+                f"buffered_events_after_close={len(self._buffer_lines)} "
+                f"buffered_bytes_after_close={self._buffer_bytes} "
+                f"batches_sent={self._hec_batches_sent} "
+                f"batches_failed={self._hec_batches_failed} "
+                f"events_sent={self._hec_events_sent} "
+                f"events_failed={self._hec_events_failed} "
+                f"retries={self._hec_retries}"
+            )
 
 
 def _build_egress_writer(
