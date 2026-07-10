@@ -108,8 +108,11 @@ Expected result: `healthy`.
 Optional app visibility check:
 
 ```bash
-curl -sk -u 'admin:<password>' 'https://localhost:8089/services/apps/local/TA-MQTT?output_mode=json'
+curl -sk -u "${SPLUNK_USER}:${SPLUNK_PASSWORD}" \
+  'https://localhost:8089/services/apps/local/TA-MQTT?output_mode=json'
 ```
+
+Use environment variables (for example `SPLUNK_USER=admin` and `SPLUNK_PASSWORD` from your local `.env`) — never embed credentials in commands or docs.
 
 Optional local broker check:
 
