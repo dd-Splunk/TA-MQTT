@@ -11,6 +11,7 @@ All notable changes to TA-MQTT should be documented in this file.
 - Updated `SECURITY.md` supported versions for 2.3.x.
 - Added `docs/branching-policy.md` and created protected `develop` integration branch.
 - Added `docs/prereleases.md`; CI prunes `build-*` prereleases beyond the 10 most recent.
+- Documented local workspace hygiene in `docs/setup-and-build.md`; removed stale `tmp_output/`, local `artifacts/` logs, and old `dist/*.spl`.
 
 ## [2.3.0] - 2026-07-10
 

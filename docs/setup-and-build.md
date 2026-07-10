@@ -124,6 +124,29 @@ docker compose ps
 
 Expected result: both `splunk` and `mosquitto` are running.
 
+## Local workspace hygiene
+
+These paths are gitignored and safe to delete when stale. They must not be
+committed.
+
+| Path | Purpose | Safe to delete? |
+|------|---------|-----------------|
+| `output/TA-MQTT/` | Current `ucc-gen build` output (Docker mount) | Only when Splunk is stopped; rebuild with `ucc-gen build` |
+| `tmp_output/` | Legacy build output (pre-`output/` layout) | **Yes** — remove if present; may ship obsolete deps (e.g. paho 1.6.1) |
+| `artifacts/` | Local AppInspect reports, JMeter `.jtl`, smoke logs | **Yes** — keep `artifacts/.gitkeep` only |
+| `dist/*.spl` | Ad-hoc packaged builds | **Yes** — regenerate from `output/TA-MQTT` or download CI releases |
+| `.splunk-persist/TA-MQTT-local/` | Live Splunk `local/` configs for Docker lab | **No** while testing — operator data, not repo source |
+
+Quick cleanup (does not touch `output/` or `.splunk-persist/`):
+
+```bash
+rm -rf tmp_output
+find artifacts -mindepth 1 ! -name '.gitkeep' -delete
+rm -f dist/*.spl
+```
+
+CI and release artifacts belong on GitHub Actions / Releases, not in the working tree.
+
 ## CI/CD Build and Release
 
 GitHub Actions workflow: `.github/workflows/build-and-release.yml`
