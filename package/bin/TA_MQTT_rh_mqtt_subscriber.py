@@ -35,6 +35,8 @@ def _splunk_rest_request(session_key, method, path, payload=None):
         headers={"Authorization": f"Splunk {session_key}"},
         method=method,
     )
+    # Splunk management REST on localhost uses the default self-signed cert.
+    # codeql[py/request-without-certificate-validation]
     with urllib.request.urlopen(
         request,
         context=ssl._create_unverified_context(),

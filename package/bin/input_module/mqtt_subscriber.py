@@ -13,7 +13,7 @@ Authentication matrix
 | use_tls | skip_verify | ca_cert | client_cert + client_key | Result                     |
 |---------|-------------|---------|--------------------------|----------------------------|
 |    0    |      *      |    *    |             *            | Plain TCP (no TLS)         |
-|    1    |      1      |    *    |             *            | TLS, no cert verification  |
+|    1    |      1      |    *    |             *            | TLS, no cert verification (requires allow_insecure_tls=1) |
 |    1    |      0      |  empty  |           empty          | TLS, system CA store       |
 |    1    |      0      |  set    |           empty          | TLS + custom CA            |
 |    1    |      0      |  set?   |           set            | mTLS (client cert auth)    |
@@ -24,6 +24,7 @@ Anonymous access: leave username & password empty on the broker configuration.
 from __future__ import annotations
 
 import base64
+import configparser
 import json
 import logging
 import os
@@ -72,6 +73,56 @@ def _is_true(value: Any) -> bool:
     if isinstance(value, bool):
         return value
     return str(value).strip().lower() in _TRUTHY
+
+
+def _read_ta_mqtt_settings_option(
+    section: str,
+    option: str,
+    default: str = "0",
+) -> str:
+    """Read a TA-MQTT settings value from local/default ta_mqtt_settings.conf."""
+    splunk_home = os.environ.get("SPLUNK_HOME", "/opt/splunk")
+    conf_paths = (
+        os.path.join(
+            splunk_home,
+            "etc",
+            "apps",
+            "TA-MQTT",
+            "local",
+            "ta_mqtt_settings.conf",
+        ),
+        os.path.join(
+            splunk_home,
+            "etc",
+            "apps",
+            "TA-MQTT",
+            "default",
+            "ta_mqtt_settings.conf",
+        ),
+    )
+    parser = configparser.ConfigParser()
+    parser.read(conf_paths)
+    if parser.has_option(section, option):
+        return parser.get(section, option)
+    return default
+
+
+def _insecure_tls_allowed() -> bool:
+    """Return True when dev/lab insecure TLS overrides are explicitly enabled."""
+    return _is_true(
+        _read_ta_mqtt_settings_option("security", "allow_insecure_tls", "0")
+    )
+
+
+def _require_insecure_tls_allowed(feature: str) -> None:
+    """Reject insecure TLS options unless allow_insecure_tls is enabled."""
+    if _insecure_tls_allowed():
+        return
+    raise ValueError(
+        f"{feature} is disabled by default. Set allow_insecure_tls=1 in "
+        "Configuration → Security (advanced) or ta_mqtt_settings.conf "
+        "[security] for dev/lab use only."
+    )
 
 
 def _parse_positive_int(raw_value: Any, field_name: str) -> int:
@@ -177,6 +228,8 @@ def _splunk_rest_json(helper, method: str, path: str, payload=None) -> Dict[str,
         headers={"Authorization": f"Splunk {session_key}"},
         method=method,
     )
+    # Splunk management REST on localhost uses the default self-signed cert.
+    # codeql[py/request-without-certificate-validation]
     with urllib.request.urlopen(
         request,
         timeout=10,
@@ -318,6 +371,7 @@ class _TLSSetup:
         try:
             with os.fdopen(fd, "w") as fh:
                 fh.write(content)
+            os.chmod(path, 0o600)
         except Exception:
             os.unlink(path)
             raise
@@ -335,8 +389,8 @@ class _TLSSetup:
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 
         if skip_verify:
-            # ⚠️  Disable cert verification — useful for mTLS brokers with
-            #     self-signed certs when you still want transport encryption.
+            _require_insecure_tls_allowed("MQTT broker skip_verify")
+            # Dev/lab only — requires allow_insecure_tls=1 in ta_mqtt_settings.
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
             logger.warning(
@@ -487,6 +541,8 @@ class _HecBatchWriter(_EgressWriter):
             return None
         if self._verify_tls:
             return ssl.create_default_context()
+        # Gated by allow_insecure_tls at collect_events(); intentional when allowed.
+        # codeql[py/request-without-certificate-validation]
         return ssl._create_unverified_context()
 
     def _send_payload(self, payload: bytes, events_in_batch: int) -> None:
@@ -729,6 +785,9 @@ def validate_input(helper, definition) -> None:
         "Event Queue Max Size",
     )
 
+    if not _is_true(params.get("hec_verify_tls", "1")):
+        _require_insecure_tls_allowed("HEC TLS verification disabled")
+
 
 def collect_events(helper, ew) -> None:
     """
@@ -756,6 +815,8 @@ def collect_events(helper, ew) -> None:
     ).strip()
     hec_token = (helper.get_arg("hec_token") or "").strip()
     hec_verify_tls = _is_true(helper.get_arg("hec_verify_tls") or "1")
+    if not hec_verify_tls:
+        _require_insecure_tls_allowed("HEC TLS verification disabled")
     hec_batch_max_events = _parse_positive_int(
         helper.get_arg("hec_batch_max_events") or "500",
         "HEC Batch Max Events",

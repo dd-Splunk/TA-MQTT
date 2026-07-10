@@ -245,6 +245,17 @@ jobs:
                   name: ta-mqtt-spl
                   path: dist
 
+            - name: Generate SHA-256 checksum
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  SPL_FILE="dist/${{ needs.build.outputs.spl_name }}"
+                  if [[ ! -f "$SPL_FILE" ]]; then
+                    echo "Expected release artifact not found: $SPL_FILE" >&2
+                    exit 1
+                  fi
+                  sha256sum "$SPL_FILE" | tee "${SPL_FILE}.sha256"
+
             - name: Publish stable release
               uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
               with:
@@ -253,4 +264,6 @@ jobs:
                   prerelease: false
                   make_latest: true
                   generate_release_notes: true
-                  files: dist/${{ needs.build.outputs.spl_name }}
+                  files: |
+                      dist/${{ needs.build.outputs.spl_name }}
+                      dist/${{ needs.build.outputs.spl_name }}.sha256

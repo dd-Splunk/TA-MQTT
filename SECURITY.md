@@ -57,9 +57,9 @@ Out of scope:
 
 ## Secure Usage Notes
 
-- Do not enable `skip_verify` or disable HEC TLS verification in production.
+- Do not enable `skip_verify` or disable HEC TLS verification in production unless `allow_insecure_tls=1` is explicitly set under **Configuration → Security (advanced)** for dev/lab only.
 - Store broker credentials and client private keys in Splunk credential storage; never commit them to source control.
-- Install add-ons only from official [GitHub Releases](https://github.com/dd-Splunk/TA-MQTT/releases) and verify the published SHA-256 digest when provided.
+- Install add-ons only from official [GitHub Releases](https://github.com/dd-Splunk/TA-MQTT/releases) and verify the published `TA-MQTT-x.y.z.spl.sha256` checksum file.
 
 ## Security Hardening in This Repository
 

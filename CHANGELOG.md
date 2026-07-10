@@ -6,6 +6,10 @@ All notable changes to TA-MQTT should be documented in this file.
 
 ### Security
 
+- Added CodeQL static analysis workflow for Python (`package/bin/`) with documented suppressions for Splunk localhost REST TLS.
+- Gated `skip_verify` and `hec_verify_tls=0` behind `allow_insecure_tls` in `ta_mqtt_settings.conf` (default off).
+- Set `chmod 0o600` on temporary mTLS certificate/key files.
+- Stable releases now publish a companion `TA-MQTT-x.y.z.spl.sha256` checksum file.
 - Added `SECURITY.md` vulnerability disclosure policy.
 - Added Dependabot for pip (`/`, `package/lib`) and GitHub Actions.
 - Added Gitleaks secret scanning workflow on pull requests and branch pushes.
