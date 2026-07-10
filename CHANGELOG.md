@@ -14,6 +14,7 @@ All notable changes to TA-MQTT should be documented in this file.
 - Added Dependabot for pip (`/`, `package/lib`) and GitHub Actions.
 - Added Gitleaks secret scanning workflow on pull requests and branch pushes.
 - Pinned all GitHub Actions to immutable commit SHAs in CI workflows.
+- Fixed Gitleaks PR scans by using full git history (`fetch-depth: 0`) in the Security workflow.
 
 ## [2.2.0] - 2026-07-10
 
