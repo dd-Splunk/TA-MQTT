@@ -32,7 +32,8 @@ app (missing `appserver/`, which breaks Configuration/Inputs with HTTP 400).
 ```bash
 docker compose stop splunk   # required when Splunk is running
 rm -rf output/TA-MQTT
-./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 2.2.0 --overwrite
+APP_VERSION=$(python3 -c 'import json; print(json.load(open("package/app.manifest", encoding="utf-8"))["info"]["id"]["version"])')
+./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version "$APP_VERSION" --overwrite
 ```
 
 Output is generated at `output/TA-MQTT/`. A successful build must include
@@ -74,7 +75,8 @@ Use this exact sequence after source changes:
 ```bash
 docker compose stop splunk
 rm -rf output/TA-MQTT
-./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 2.2.0 --overwrite
+APP_VERSION=$(python3 -c 'import json; print(json.load(open("package/app.manifest", encoding="utf-8"))["info"]["id"]["version"])')
+./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version "$APP_VERSION" --overwrite
 docker compose up -d splunk
 ```
 

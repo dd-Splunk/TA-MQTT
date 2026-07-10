@@ -22,7 +22,8 @@ lives under `docs/`.
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements-build.txt
-./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 2.2.0 --overwrite
+APP_VERSION=$(python3 -c 'import json; print(json.load(open("package/app.manifest", encoding="utf-8"))["info"]["id"]["version"])')
+./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version "$APP_VERSION" --overwrite
 docker compose up -d
 ```
 

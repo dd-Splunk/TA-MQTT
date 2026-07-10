@@ -4,6 +4,12 @@ All notable changes to TA-MQTT should be documented in this file.
 
 ## [Unreleased]
 
+### Documentation
+
+- Build docs now derive `--ta-version` from `package/app.manifest` instead of a hardcoded release.
+- Documented `allow_insecure_tls` gate for lab TLS/HEC testing in troubleshooting and `tasks/todo.md`.
+- Updated `SECURITY.md` supported versions for 2.3.x.
+
 ## [2.3.0] - 2026-07-10
 
 ### Changed in 2.3.0

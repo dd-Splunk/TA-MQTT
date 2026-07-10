@@ -5,7 +5,8 @@
 Use the virtual environment binary directly:
 
 ```bash
-./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 2.2.0 --overwrite
+APP_VERSION=$(python3 -c 'import json; print(json.load(open("package/app.manifest", encoding="utf-8"))["info"]["id"]["version"])')
+./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version "$APP_VERSION" --overwrite
 ```
 
 ## Build fails when `output/TA-MQTT` already exists
@@ -20,7 +21,8 @@ rm -rf output/TA-MQTT
 Then rebuild with `--overwrite`:
 
 ```bash
-./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 2.2.0 --overwrite --overwrite
+APP_VERSION=$(python3 -c 'import json; print(json.load(open("package/app.manifest", encoding="utf-8"))["info"]["id"]["version"])')
+./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version "$APP_VERSION" --overwrite
 ```
 
 ## Configuration or Inputs returns HTTP 400
@@ -128,6 +130,33 @@ If queue pressure is visible:
 1. Reduce topic breadth or message volume for the stanza.
 2. Spread load across more input stanzas or forwarders if operationally acceptable.
 3. Check Splunk host CPU and I/O pressure before assuming the broker is the bottleneck.
+
+## Input fails with insecure TLS disabled
+
+Since v2.3.0, the following options are **blocked by default** in production:
+
+- MQTT broker `skip_verify=1` (in `ta_mqtt_mqtt_broker.conf`)
+- Input `hec_verify_tls=0` (in the subscription stanza)
+
+To use them in a **dev/lab** environment only, enable the global override:
+
+```ini
+# $SPLUNK_HOME/etc/apps/TA-MQTT/local/ta_mqtt_settings.conf
+[security]
+allow_insecure_tls = 1
+```
+
+Or set **Allow insecure TLS (dev/lab)** under Configuration → Security (advanced)
+when that tab is exposed in the UI.
+
+After changing this file, restart the affected MQTT inputs or restart Splunk.
+Leave `allow_insecure_tls = 0` (default) in production.
+
+Typical log error when the gate blocks startup:
+
+```text
+ValueError: HEC TLS verification disabled is disabled by default. Set allow_insecure_tls=1 ...
+```
 
 ## Input fails with broker not found
 

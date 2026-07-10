@@ -4,7 +4,8 @@
 
 | Version | Supported |
 | ------- | --------- |
-| 2.2.x   | Yes       |
+| 2.3.x   | Yes       |
+| 2.2.x   | Limited (critical fixes only; upgrade to 2.3.x recommended) |
 | < 2.2   | No        |
 
 Security fixes are delivered in patch or minor releases on the `main` branch and published as tagged stable releases (`v*`).

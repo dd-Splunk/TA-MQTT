@@ -46,8 +46,12 @@ TLS fields are hidden in the Configuration UI until this phase is complete.
 
 ## Phase 4 — TLS / mTLS test (backend validation)
 
+Prerequisite (since v2.3.0): set `allow_insecure_tls=1` in `local/ta_mqtt_settings.conf`
+`[security]` for lab tests that use `skip_verify` or `hec_verify_tls=0`. Keep the
+default `0` in production.
+
 - [ ] Add a TLS broker: enable TLS, set port 8883
-- [ ] Test with `skip_verify=true` against a broker with self-signed cert
+- [ ] Test with `skip_verify=true` and `allow_insecure_tls=1` against a broker with self-signed cert
 - [ ] Test with custom CA cert (paste PEM into CA Certificate field)
 - [ ] Test full mTLS: paste client cert + client key
 - [ ] Verify no cert temp-files leak on disk after reconnect
