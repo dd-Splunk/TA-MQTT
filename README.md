@@ -41,6 +41,7 @@ Local development and CI builds are pinned to Python 3.13.
 
 - [Setup and Build](docs/setup-and-build.md)
 - [Branching Policy](docs/branching-policy.md)
+- [Prerelease Policy](docs/prereleases.md)
 - [Configuration and Events](docs/configuration-and-events.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Performance Testing](docs/performance-testing.md)
@@ -54,13 +55,15 @@ GitHub Actions workflow: `.github/workflows/build-and-release.yml`
 
 Branching model: see [Branching Policy](docs/branching-policy.md) (`develop` = integration, `main` = release line).
 
+Prerelease stream (`build-<shortsha>` on `main` pushes): see [Prerelease Policy](docs/prereleases.md). Only the **10 most recent** prereleases are kept.
+
 - Builds run on every push to `main` and `develop`, and on pull requests targeting those branches.
 - Python is pinned to `3.13` in CI.
 - Build version is read from `package/app.manifest` and passed to `ucc-gen build --ta-version`.
 - UCC framework is pinned in `requirements-build.txt` (currently `6.5.0`).
 - `ucc-gen validate` runs on the built add-on before packaging (AppInspect).
 - Output is packaged as `TA-MQTT-<version>.spl`.
-- On `main` pushes, CI publishes a prerelease stream with immutable per-commit tags (`build-<shortsha>`).
+- On `main` pushes, CI publishes a prerelease stream with immutable per-commit tags (`build-<shortsha>`); see [Prerelease Policy](docs/prereleases.md) for retention (10 builds).
 - On semantic tags `vX.Y.Z`, CI publishes a stable GitHub Release.
 
 ### Version Integrity Rules

@@ -131,7 +131,7 @@ GitHub Actions workflow: `.github/workflows/build-and-release.yml`
 - CI uses Python `3.13`.
 - CI reads app version from `package/app.manifest`.
 - CI builds and packages `dist/TA-MQTT-<version>.spl`.
-- Pushes to `main` publish prereleases using immutable tags (`build-<shortsha>`).
+- Pushes to `main` publish prereleases using immutable tags (`build-<shortsha>`); see [Prerelease Policy](prereleases.md) (10-build retention, lab use only).
 - Pushes of semantic tags `vX.Y.Z` publish stable releases.
 
 ### Version and Changelog Enforcement

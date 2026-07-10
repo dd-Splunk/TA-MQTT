@@ -10,6 +10,7 @@ All notable changes to TA-MQTT should be documented in this file.
 - Documented `allow_insecure_tls` gate for lab TLS/HEC testing in troubleshooting and `tasks/todo.md`.
 - Updated `SECURITY.md` supported versions for 2.3.x.
 - Added `docs/branching-policy.md` and created protected `develop` integration branch.
+- Added `docs/prereleases.md`; CI prunes `build-*` prereleases beyond the 10 most recent.
 
 ## [2.3.0] - 2026-07-10
 

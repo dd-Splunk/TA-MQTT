@@ -73,5 +73,5 @@ For urgent fixes on the current production line:
 |-------|-----------|--------|
 | PR / push build + AppInspect | Yes | Yes |
 | Gitleaks + CodeQL | Yes | Yes |
-| Prerelease `build-<sha>` publish | No | Yes |
+| Prerelease `build-<sha>` publish | No | Yes (see [Prerelease Policy](prereleases.md)) |
 | Stable release on `v*` tag | No | Yes |
