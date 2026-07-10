@@ -1,76 +1,88 @@
 # TA-MQTT — Project Tasks
 
-## Phase 1 — Initial scaffold ✅
+**Current release:** `v2.4.0` (2026-07-10)  
+**Audit P1–P3:** branching policy, prerelease retention, local hygiene, TLS UI, `app.manifest` metadata — **done**.
 
-- [x] globalConfig.json — Broker Connections (step 1) + MQTT Topic Subscriptions (step 2)
-- [x] package/app.manifest
-- [x] package/bin/mqtt_subscriber.py (entry point)
-- [x] package/bin/import_declare_test.py (sys.path bootstrap)
-- [x] package/bin/input_module/mqtt_subscriber.py (core logic)
-- [x] package/default/app.conf
-- [x] package/default/inputs.conf
-- [x] package/default/props.conf
-- [x] package/default/transforms.conf
-- [x] package/default/ta_mqtt_settings.conf
-- [x] package/lib/requirements.txt (paho-mqtt==2.1.0)
-- [x] package/metadata/default.meta
-- [x] additional_packaging.py (pip hook)
-- [x] requirements-build.txt
-- [x] README.md
+---
 
-## Phase 2 — Build & install
+## Remaining work (prioritized)
 
-- [ ] Run `pip install -r requirements-build.txt` in a virtual env
-- [ ] Run `ucc-gen build` from the repo root
-- [ ] Copy/sideload `output/TA-MQTT/` to `$SPLUNK_HOME/etc/apps/`
-- [ ] Restart Splunk: `splunk restart`
-- [ ] Confirm UI loads at Inputs → MQTT Topic Subscription
+### P0 — TLS/mTLS validation (UI + runtime)
 
-## Phase 3 — First broker test
+Prerequisite: enable **Configuration → Security (advanced) → Allow insecure TLS** for
+lab tests that use `skip_verify` (not for production).
 
-- [ ] Navigate to Apps → MQTT Broker Add-on → Configuration → Broker Connections
-- [ ] Add a broker (e.g. test.mosquitto.org, port 1883, anonymous, or with username/password)
-- [ ] Navigate to Inputs → MQTT Topic Subscription
-- [ ] Select the broker, subscribe to topic `#`, index `main`
-- [ ] Run search: `index=main sourcetype="mqtt:message"` — should see events
+- [ ] **Plain MQTT smoke** — broker anonymous on port 1883, topic `#`, search `index=main sourcetype="mqtt:message"`
+- [ ] **TLS + skip_verify** — Mosquitto or local broker on 8883, self-signed cert, `use_tls` + `skip_verify` via UI
+- [ ] **TLS + custom CA** — paste broker CA PEM in **CA Certificate** field, `skip_verify` off
+- [ ] **mTLS** — client cert + key PEM in UI; confirm connect and ingest
+- [ ] **Temp-file hygiene** — after reconnect/stop, no stale `client_cert` / `client_key` temp files under `/tmp` (see `tasks/lessons.md` L-003)
+- [ ] Update `docs/test-evidence-mqtt-tls-mtls.md` with v2.4.0 UI evidence (screenshots or command log)
 
-## Phase 3b — Broker TLS/mTLS UI ✅
+### P1 — Configuration UI gaps
 
-Runtime TLS/mTLS support exists in `input_module/mqtt_subscriber.py`; broker TLS
-fields are exposed in Configuration → Broker Connections as of v2.4.0.
+- [ ] Re-enable hidden **HEC advanced** input fields in `globalConfig.json` when ready (`hec_url`, `hec_token`, `hec_verify_tls`, batch tuning, etc.) — currently `display: false`
+- [ ] Document operator guidance for when to use per-input HEC overrides vs defaults
+- [ ] Move `app.manifest` `developmentStatus` from **Beta** → **Production** after P0 TLS validation and one full Docker lab cycle on `v2.4.0`
 
-- [x] Re-enable broker TLS/mTLS fields in `globalConfig.json` (`use_tls`, `skip_verify`, `ca_cert`, `client_cert`, `client_key`)
-- [x] Expose **Allow insecure TLS** on Configuration → Security (advanced)
-- [x] Add TLS column to broker connections table
-- [ ] Validate plain TLS, custom CA, skip-verify, and mTLS against Mosquitto test certs
-- [x] Update Configuration page description and operator docs
+### P2 — Performance & load tooling
 
-## Phase 4 — TLS / mTLS test (backend validation)
+- [ ] Review queue backpressure under high-throughput topics (configurable queue size already implemented)
+- [ ] JMeter: match Python `tools/mqtt_load_test.py` coverage for QoS, auth, TLS, mTLS
+- [ ] Decide whether to run JMeter scenarios in CI (separate workflow) or keep manual/off-pipeline
+- [ ] Remove `tools/mqtt_load_test.py` only after documented parity and contributor usability
 
-Prerequisite (since v2.3.0): set `allow_insecure_tls=1` in `local/ta_mqtt_settings.conf`
-`[security]` for lab tests that use `skip_verify` or `hec_verify_tls=0`. Keep the
-default `0` in production.
+### P3 — Production & distribution
 
-- [ ] Add a TLS broker: enable TLS, set port 8883
-- [ ] Test with `skip_verify=true` and `allow_insecure_tls=1` against a broker with self-signed cert
-- [ ] Test with custom CA cert (paste PEM into CA Certificate field)
-- [ ] Test full mTLS: paste client cert + client key
-- [ ] Verify no cert temp-files leak on disk after reconnect
+- [ ] Splunk saved search / alert: `index=_internal sourcetype=splunkd ERROR ta-mqtt`
+- [ ] Optional: `props.conf` / `INDEXED_EXTRACTIONS` for JSON payload sub-fields
+- [ ] Splunkbase publication (optional) — privacy policy URL, support contact, package checklist
+- [ ] Consider `check_for_updates = true` in `app.conf` once Splunkbase or release feed exists
 
-## Phase 5 — Production hardening
+### P4 — Repository process
 
-- [ ] Add Splunk alert for `index=_internal sourcetype=splunkd ERROR ta-mqtt`
-- [ ] Review queue backpressure behaviour under high-throughput topics
-- [ ] Consider extracting payload JSON sub-fields with a custom props.conf
-- [ ] Publish to Splunkbase (optional)
+- [ ] Route feature work through **`develop` → PR → `main`** per `docs/branching-policy.md` (stop admin-bypass direct pushes except hotfixes)
+- [ ] Back-merge `main` into `develop` after each stable tag
+- [ ] Phase 4 TLS lab: refresh `.splunk-persist/TA-MQTT-local/` only when needed; keep out of git
 
-## Phase 6 — JMeter migration
+---
 
-- [x] Stand up repo-local JMeter starter assets using the EMQX/XMeter MQTT plugin
-- [x] Validate JMeter publish load against the local Mosquitto service in `compose.yml`
-- [x] Add a fixed sustained-load JMeter scenario alongside the smoke plan
-- [x] Reconcile sustained-run JMeter publish counts with TA runtime summaries in Splunk
-- [x] Add dedicated JMeter plan templates for TLS and mTLS publisher validation
-- [ ] Match Python load-generator coverage for QoS, auth, TLS, and mTLS
-- [ ] Decide whether to automate the JMeter path outside the current add-on CI pipeline
-- [ ] Remove `tools/mqtt_load_test.py` only after documented parity and contributor usability are confirmed
+## Completed phases (archive)
+
+### Phase 1 — Initial scaffold ✅
+
+- [x] globalConfig.json — Broker Connections + MQTT Topic Subscriptions
+- [x] Modular input, REST handlers, conf files, `additional_packaging.py`, build deps
+
+### Phase 2 — Build & install (local checklist)
+
+Use `docs/setup-and-build.md` — steps below are the standard new-developer path:
+
+- [x] Documented venv + `ucc-gen build` + Docker Compose mount of `output/TA-MQTT/`
+- [ ] Onboarding: run full checklist once on a clean machine (optional verification)
+
+### Phase 3 — First broker test
+
+Covered by **P0 — Plain MQTT smoke** above.
+
+### Phase 3b — Broker TLS/mTLS UI ✅ (v2.4.0)
+
+- [x] TLS/mTLS fields visible in Configuration
+- [x] **Allow insecure TLS** on Security tab
+- [x] TLS column on broker table
+- [x] Operator docs updated
+
+### Phase 6 — JMeter migration (partial) ✅
+
+- [x] Repo-local JMeter assets, sustained-load plans, TLS/mTLS publisher templates
+- [x] Reconcile JMeter publish counts with TA runtime summaries
+- Remaining items → **P2** above
+
+---
+
+## Reference
+
+- Branching: `docs/branching-policy.md`
+- Prereleases: `docs/prereleases.md`
+- TLS test plan: `docs/test-plan-mqtt-tls-mtls.md`
+- Lessons: `tasks/lessons.md`

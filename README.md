@@ -13,7 +13,7 @@ lives under `docs/`.
 - JSON event envelope with consistent metadata (`broker`, `mqtt_host`, `topic`, etc.)
 - Configurable queue capacity, reconnect backoff/cooldown resilience, and runtime health metrics
 - HEC batch egress with per-input token lifecycle management
-- Broker TLS/mTLS (runtime implemented; Configuration UI deferred — see `tasks/todo.md`)
+- Broker TLS/mTLS in Configuration UI (`use_tls`, CA/client PEM, `skip_verify` gated by Security settings)
 - Local Docker test stack with Splunk and Mosquitto for repeatable validation
 
 ## Quick Start
