@@ -61,6 +61,7 @@ htmlcov/
 # Project-generated artifacts
 output/*
 !output/.gitkeep
+tmp_output/
 artifacts/*
 !artifacts/.gitkeep
 .splunk-persist/

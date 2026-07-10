@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dashboard version="1.1" hideEdit="true" refresh="60">
+    <label>Search</label>
+    <fieldset submitButton="false">
+        <input type="time" token="time_token">
+            <label>Time Range</label>
+            <default>
+                <earliest>-24h@h</earliest>
+                <latest>now</latest>
+            </default>
+        </input>
+    </fieldset>
+    <row>
+        <panel>
+            <title>MQTT Events</title>
+            <table>
+                <search>
+                    <query>index=* sourcetype="mqtt:message"
+| table _time, host, source, topic, payload
+| sort - _time</query>
+                    <earliest>$time_token.earliest$</earliest>
+                    <latest>$time_token.latest$</latest>
+                </search>
+                <option name="count">100</option>
+                <option name="drilldown">row</option>
+                <option name="refresh.display">progressbar</option>
+            </table>
+        </panel>
+    </row>
+</dashboard>

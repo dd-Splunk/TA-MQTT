@@ -1,4 +1,7 @@
 # TA-MQTT — build-time requirements (not bundled with the add-on)
 # Install with:  pip install -r requirements-build.txt
+#
+# UCC 6.x requires Python >=3.9,<3.14. Use splunk-add-on-ucc-framework[validate]
+# to install AppInspect dependencies for `ucc-gen validate`.
 
-splunk-add-on-ucc-framework>=5.35.0
+splunk-add-on-ucc-framework[validate]==6.5.0

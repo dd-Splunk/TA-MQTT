@@ -11,9 +11,9 @@ This guide covers local build and Docker-based testing for TA-MQTT.
 
 ## Prerequisites
 
-- Python 3.13
+- Python 3.9–3.13 (local builds and CI use Python 3.13)
 - Docker Desktop (or Docker Engine) with Compose
-- Build dependencies from `requirements-build.txt`
+- Build dependencies from `requirements-build.txt` (UCC framework 6.x)
 
 ## Initial Local Setup
 
@@ -25,11 +25,18 @@ python -m pip install -r requirements-build.txt
 
 ## Build the Add-on
 
+Stop Splunk before rebuilding when using Docker Compose. The container bind-mounts
+`output/TA-MQTT/` and can block cleanup or leave Splunk running with an incomplete
+app (missing `appserver/`, which breaks Configuration/Inputs with HTTP 400).
+
 ```bash
-./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 2.1.1
+docker compose stop splunk   # required when Splunk is running
+rm -rf output/TA-MQTT
+./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 2.2.0 --overwrite
 ```
 
-Output is generated at `output/TA-MQTT/`.
+Output is generated at `output/TA-MQTT/`. A successful build must include
+`output/TA-MQTT/appserver/` (UI templates and JavaScript bundles).
 
 The value passed to `--ta-version` must match `package/app.manifest`.
 `package/app.manifest` is the source of truth for the add-on version.
@@ -67,14 +74,28 @@ Use this exact sequence after source changes:
 ```bash
 docker compose stop splunk
 rm -rf output/TA-MQTT
-./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 2.1.1
+./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 2.2.0 --overwrite
 docker compose up -d splunk
 ```
 
-`ucc-gen build` expects a clean output directory. Rebuilding without removing
-`output/TA-MQTT` can fail with `FileExistsError`.
+`ucc-gen build` overwrites `output/TA-MQTT` when `--overwrite` is set (UCC 6
+default for the standard `output/` path). If Splunk is still running with the
+output directory mounted, cleanup can fail and leave only `output/TA-MQTT/local/`.
 
 Source code should be edited in `package/`, not in `output/TA-MQTT/`.
+
+## App UI views
+
+After a successful build, these navigation items should load in Splunk Web (`http://localhost:8000`):
+
+| View | Purpose |
+|------|---------|
+| **Brokers** | MQTT broker connection definitions |
+| **Subscriptions** | Topic subscriptions (Inputs) |
+| **Monitoring Dashboard** | UCC telemetry dashboard (one global time picker, 60s refresh) |
+| **Search** | Simple event table for `sourcetype=mqtt:message` |
+
+Custom dashboard JSON is patched at build time by `additional_packaging.py`; see [Troubleshooting](./troubleshooting.md) if the Monitoring dashboard fails to load.
 
 ## Health Checks
 

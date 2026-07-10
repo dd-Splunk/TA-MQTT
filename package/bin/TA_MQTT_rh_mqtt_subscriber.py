@@ -200,7 +200,7 @@ fields = [
         "batch_mode",
         required=False,
         encrypted=False,
-        default="0",
+        default="1",
         validator=validator.Pattern(
             regex=r"""^[01]$""",
         ),
@@ -291,7 +291,7 @@ endpoint = DataInputModel("mqtt_subscriber", model)
 class MQTTSubscriberHandler(AdminExternalHandler):
     @staticmethod
     def _ensure_hec_token(session_key, stanza_id, payload):
-        batch_mode = str(payload.get("batch_mode", "0")).strip()
+        batch_mode = str(payload.get("batch_mode", "1")).strip()
         if batch_mode != "1":
             return
 

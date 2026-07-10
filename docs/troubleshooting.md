@@ -5,19 +5,60 @@
 Use the virtual environment binary directly:
 
 ```bash
-./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 2.1.1
+./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 2.2.0 --overwrite
 ```
 
 ## Build fails when `output/TA-MQTT` already exists
 
-Stop Splunk container before deleting output folder:
+Stop Splunk before deleting output folder:
 
 ```bash
 docker compose stop splunk
 rm -rf output/TA-MQTT
 ```
 
-Then rebuild and start again.
+Then rebuild with `--overwrite`:
+
+```bash
+./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 2.2.0 --overwrite --overwrite
+```
+
+## Configuration or Inputs returns HTTP 400
+
+This usually means Splunk is serving an incomplete add-on build. The UCC views
+(`configuration.xml`, `inputs.xml`) reference `TA-MQTT:/templates/base.html`, but
+that template lives under `appserver/`.
+
+Check inside the container:
+
+```bash
+docker compose exec splunk ls /opt/splunk/etc/apps/TA-MQTT/appserver/templates/base.html
+```
+
+If the file is missing:
+
+1. `docker compose stop splunk`
+2. `rm -rf output/TA-MQTT`
+3. Rebuild with `ucc-gen build ... --overwrite`
+4. Confirm `output/TA-MQTT/appserver/static/js/build/ConfigurationPage.*.js` exists
+5. `docker compose up -d splunk`
+
+## "Default Views" shows many duplicate Splunk views
+
+On Splunk 10.x, the Search page can show a **Default Views** picker that lists
+views from the whole Splunk instance (Analytics, Datasets, Dashboards, etc.), not
+only TA-MQTT navigation items. That list is expected Splunk UI behavior.
+
+TA-MQTT's own navigation (from `default.xml`) contains only:
+
+- Brokers (default)
+- Subscriptions
+- Monitoring Dashboard
+- Search
+
+Use the app launcher tabs or open `/app/TA-MQTT/configuration` directly. Setting
+`meta.defaultView` to `configuration` in `globalConfig.json` makes the app open on
+Configuration instead of Search after rebuild.
 
 ## App does not appear in Splunk launcher
 
@@ -125,6 +166,29 @@ docker exec -u splunk splunk /opt/splunk/bin/splunk btool props list mqtt:messag
 
 If duplicates remain, run a fresh search window (`earliest=-15m`) to avoid stale
 field discovery from old events.
+
+## Monitoring dashboard shows unknown error or duplicate time pickers
+
+The UCC-generated Monitoring dashboard is post-processed by `additional_packaging.py`
+to use a single global time token (`global_time`) and 60s auto-refresh.
+
+After changing dashboard packaging logic:
+
+1. `docker compose stop splunk`
+2. `rm -rf output/TA-MQTT` (use Docker if `local/` is root-owned: `docker run --rm -v "$(pwd)/output:/output" alpine rm -rf /output/TA-MQTT`)
+3. Rebuild with `--ta-version` matching `package/app.manifest`
+4. `docker compose up -d splunk`
+
+Expected UI:
+
+- One **Time** picker at the top of the Monitoring dashboard
+- All tabs (Overview, Data ingestion, Errors, Resource) follow `form.global_time.*` in the URL
+
+Do not patch minified `Dashboard.*.js` bundles by hand; invalid ES module edits cause a blank dashboard with an unknown error.
+
+## Search navigation page is empty
+
+The **Search** item uses a classic Splunk dashboard view (`package/default/data/ui/views/search.xml`), not the UCC React shell. Rebuild and restart Splunk if the view was added or updated recently.
 
 ## Quick runtime checks
 

@@ -5,7 +5,7 @@
     "id": {
       "group": null,
       "name": "TA-MQTT",
-      "version": "2.1.1"
+      "version": "2.2.0"
     },
     "author": [
       {
@@ -30,7 +30,7 @@
       "name": "",
       "url": null
     },
-    "releaseNotes": "* Major release: introduces per-input batch mode and optional HEC batch egress, removes legacy output_mode compatibility, strengthens HEC token validation, and includes validated high-throughput retest results (5000 msgs/s for 60s with full indexing coverage)."
+    "releaseNotes": "* Monitoring dashboard uses one global time picker for all panels (60s auto-refresh). Search view lists mqtt:message events. Broker TLS/mTLS fields remain hidden in Configuration UI until a follow-up release."
   },
   "dependencies": null,
   "tasks": null,

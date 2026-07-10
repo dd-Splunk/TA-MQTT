@@ -2,6 +2,27 @@
 
 All notable changes to TA-MQTT should be documented in this file.
 
+## [2.2.0] - 2026-07-10
+
+### Added in 2.2.0
+
+- Added a classic Splunk **Search** dashboard (`sourcetype=mqtt:message`) with time picker and 60s refresh.
+- Added **Search** row action on MQTT topic subscriptions.
+- Post-build dashboard patching: single global time token (`global_time`), duplicate tab pickers removed, 60s panel refresh.
+
+### Changed in 2.2.0
+
+- Monitoring dashboard now exposes **one** time picker that drives all panels across Overview and tab views via `form.global_time.*` URL tokens.
+- Configuration UI labels clarified (Brokers / Subscriptions); broker TLS/mTLS and advanced HEC fields hidden until a follow-up release.
+- `additional_packaging.py` removes AppInspect-rejected bytecode and patches UCC dashboard JSON (no fragile JS bundle edits).
+- CI pins UCC `6.5.0`, runs `ucc-gen validate`, and documents `--overwrite` rebuild flow.
+- Stopped tracking generated `tmp_output/TA-MQTT/` build artifacts in git.
+
+### Fixed in 2.2.0
+
+- Fixed Monitoring dashboard **unknown error** caused by invalid post-build JavaScript patches.
+- Fixed empty **Search** navigation view (UCC React route had no mounted component).
+
 ## [2.1.1] - 2026-03-17
 
 ### Changed in 2.1.1

@@ -107,7 +107,50 @@ jobs:
               run: |
                   set -euo pipefail
                   rm -rf output/TA-MQTT
-                  ./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version "$APP_VERSION"
+                  ./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version "$APP_VERSION" --overwrite
+
+            - name: Install AppInspect system dependencies
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  sudo apt-get update -qq
+                  sudo apt-get install -y --no-install-recommends libmagic1
+
+            - name: Validate add-on with ucc-gen validate
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  mkdir -p artifacts
+                  ./.venv/bin/ucc-gen validate \
+                    --addon-path output/TA-MQTT \
+                    --output-file artifacts/appinspect.json
+                  python3 - <<'EOF'
+                  import json
+                  import sys
+
+                  payload = json.load(open("artifacts/appinspect.json", encoding="utf-8"))
+                  failures = []
+                  for report in payload.get("reports", []):
+                      for group in report.get("groups", []):
+                          for check in group.get("checks", []):
+                              if check.get("result") in {"failure", "error"}:
+                                  failures.append(check)
+
+                  if failures:
+                      print("AppInspect reported blocking failures:", file=sys.stderr)
+                      for check in failures[:20]:
+                          print(f"  - {check.get('name')}: {check.get('result')}", file=sys.stderr)
+                      sys.exit(1)
+                  print("AppInspect validation passed.")
+                  EOF
+
+            - name: Upload AppInspect report
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: appinspect-report
+                  path: artifacts/appinspect.json
+                  retention-days: 30
 
             - name: Package .spl artifact
               id: package

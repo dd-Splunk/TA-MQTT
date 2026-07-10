@@ -687,7 +687,7 @@ def validate_input(helper, definition) -> None:
     except (ValueError, TypeError):
         raise ValueError("Reconnect Interval must be a positive integer.")
 
-    batch_mode = _is_true(params.get("batch_mode", "0"))
+    batch_mode = _is_true(params.get("batch_mode", "1"))
     output_mode = "hec_batch" if batch_mode else "modinput_single_event"
 
     if output_mode == "hec_batch":
@@ -747,7 +747,7 @@ def collect_events(helper, ew) -> None:
     qos = int(helper.get_arg("qos") or 0)
     sourcetype = helper.get_arg("sourcetype") or "mqtt:message"
     index = helper.get_arg("index") or "default"
-    batch_mode_enabled = _is_true(helper.get_arg("batch_mode") or "0")
+    batch_mode_enabled = _is_true(helper.get_arg("batch_mode") or "1")
     output_mode = "hec_batch" if batch_mode_enabled else "modinput_single_event"
 
     hec_endpoint = (

@@ -2,18 +2,22 @@
     "meta": {
         "name": "TA-MQTT",
         "restRoot": "TA_MQTT",
-        "version": "2.1.1",
+        "version": "2.2.0",
         "displayName": "MQTT Broker Add-on for Splunk",
-        "schemaVersion": "0.0.10"
+        "schemaVersion": "0.0.10",
+        "supportedPythonVersion": [
+            "3.13"
+        ],
+        "defaultView": "configuration"
     },
     "pages": {
         "configuration": {
-            "title": "Configuration",
-            "description": "Define MQTT broker connections. Each broker can use anonymous access, username/password, plain TLS, or mutual TLS (mTLS) with client certificates.",
+            "title": "Brokers",
+            "description": "Step 1 — Define MQTT broker connections (host, port, optional username/password). Topic subscriptions are configured separately under Inputs.",
             "tabs": [
                 {
                     "name": "mqtt_broker",
-                    "title": "MQTT Brokers",
+                    "title": "Broker Connections",
                     "style": "page",
                     "entity": [
                         {
@@ -21,7 +25,7 @@
                             "label": "Broker Name",
                             "type": "text",
                             "required": true,
-                            "help": "Unique identifier for this broker connection. Used to reference it in inputs.",
+                            "help": "Unique identifier for this broker connection. Referenced by topic subscriptions on the Inputs page.",
                             "validators": [
                                 {
                                     "type": "string",
@@ -103,7 +107,10 @@
                             "type": "checkbox",
                             "required": false,
                             "defaultValue": false,
-                            "help": "Encrypt the connection with TLS. Required for mTLS brokers."
+                            "help": "Encrypt the connection with TLS. Required for mTLS brokers.",
+                            "options": {
+                                "display": false
+                            }
                         },
                         {
                             "field": "skip_verify",
@@ -111,7 +118,10 @@
                             "type": "checkbox",
                             "required": false,
                             "defaultValue": false,
-                            "help": "⚠️ Disables server certificate validation. Allows connecting to mTLS-enabled brokers without a trusted CA certificate. Use only in development or when the broker uses a self-signed certificate."
+                            "help": "⚠️ Disables server certificate validation. Allows connecting to mTLS-enabled brokers without a trusted CA certificate. Use only in development or when the broker uses a self-signed certificate.",
+                            "options": {
+                                "display": false
+                            }
                         },
                         {
                             "field": "ca_cert",
@@ -119,8 +129,7 @@
                             "type": "textarea",
                             "required": false,
                             "options": {
-                                "rowsMin": 5,
-                                "rowsMax": 20
+                                "display": false
                             },
                             "help": "Optional. PEM-encoded CA certificate used to verify the broker's server certificate. If empty, the system trust store is used. Ignored when 'Skip TLS Certificate Verification' is checked.",
                             "validators": [
@@ -138,8 +147,7 @@
                             "type": "textarea",
                             "required": false,
                             "options": {
-                                "rowsMin": 5,
-                                "rowsMax": 20
+                                "display": false
                             },
                             "help": "Optional. PEM-encoded client certificate for mutual TLS (mTLS) authentication. Must be provided together with the Client Private Key.",
                             "validators": [
@@ -158,8 +166,7 @@
                             "required": false,
                             "encrypted": true,
                             "options": {
-                                "rowsMin": 5,
-                                "rowsMax": 20
+                                "display": false
                             },
                             "help": "Optional. PEM-encoded private key corresponding to the client certificate. Stored encrypted. Must be provided together with the Client Certificate.",
                             "validators": [
@@ -185,10 +192,6 @@
                             {
                                 "field": "port",
                                 "label": "Port"
-                            },
-                            {
-                                "field": "use_tls",
-                                "label": "TLS"
                             },
                             {
                                 "field": "username",
@@ -251,18 +254,21 @@
             ]
         },
         "inputs": {
-            "title": "Inputs",
+            "title": "Subscriptions",
             "services": [
                 {
                     "name": "mqtt_subscriber",
-                    "title": "MQTT Subscriber",
+                    "title": "MQTT Topic Subscription",
+                    "description": "Subscribe to MQTT topics on a broker defined under Configuration.",
+                    "useInputToggleConfirmation": true,
+                    "subTitle": "Broker + topic filter (wildcards allowed).",
                     "entity": [
                         {
                             "field": "name",
-                            "label": "Input Name",
+                            "label": "Subscription Name",
                             "type": "text",
                             "required": true,
-                            "help": "Unique name for this input stanza.",
+                            "help": "Unique name for this topic subscription.",
                             "validators": [
                                 {
                                     "type": "string",
@@ -282,7 +288,7 @@
                             "label": "MQTT Broker",
                             "type": "singleSelect",
                             "required": true,
-                            "help": "Select a broker connection defined on the Configuration page.",
+                            "help": "Broker connection name as defined under Configuration → Broker Connections.",
                             "validators": [
                                 {
                                     "type": "regex",
@@ -347,7 +353,10 @@
                             "type": "text",
                             "required": false,
                             "defaultValue": "AUTO",
-                            "help": "Optional static MQTT client ID. Leave as AUTO (or empty) to auto-generate a unique ID per input stanza. Must be unique across all clients connected to the broker.",
+                            "help": "Optional static MQTT client ID. Leave as AUTO (or empty) to auto-generate a unique ID per subscription. Must be unique across all clients connected to the broker.",
+                            "options": {
+                                "display": false
+                            },
                             "validators": [
                                 {
                                     "type": "regex",
@@ -382,14 +391,17 @@
                             "field": "interval",
                             "label": "Reconnect Interval (seconds)",
                             "type": "text",
+                            "help": "How long (in seconds) to wait before attempting to reconnect after an unexpected disconnection.",
                             "required": false,
                             "defaultValue": "30",
-                            "help": "How long (in seconds) to wait before attempting to reconnect after an unexpected disconnection.",
+                            "options": {
+                                "display": false
+                            },
                             "validators": [
                                 {
                                     "type": "regex",
                                     "pattern": "^[1-9][0-9]*$",
-                                    "errorMsg": "Reconnect interval must be a positive integer."
+                                    "errorMsg": "Reconnect Interval must be a positive integer."
                                 }
                             ]
                         },
@@ -400,6 +412,9 @@
                             "required": false,
                             "defaultValue": "10000",
                             "help": "Maximum number of MQTT events buffered in memory before new messages are dropped.",
+                            "options": {
+                                "display": false
+                            },
                             "validators": [
                                 {
                                     "type": "regex",
@@ -439,6 +454,9 @@
                             "required": false,
                             "defaultValue": "https://localhost:8088/services/collector/event",
                             "help": "HTTP Event Collector endpoint used when Batch Output Mode is set to HEC batch writer.",
+                            "options": {
+                                "display": false
+                            },
                             "validators": [
                                 {
                                     "type": "string",
@@ -472,7 +490,10 @@
                             "type": "checkbox",
                             "required": false,
                             "defaultValue": true,
-                            "help": "Verify the HEC server TLS certificate. Disable only for self-signed development endpoints."
+                            "help": "Verify the HEC server TLS certificate. Disable only for self-signed development endpoints.",
+                            "options": {
+                                "display": false
+                            }
                         },
                         {
                             "field": "hec_batch_max_events",
@@ -481,6 +502,9 @@
                             "required": false,
                             "defaultValue": "500",
                             "help": "Flush when this many events are buffered in hec_batch mode.",
+                            "options": {
+                                "display": false
+                            },
                             "validators": [
                                 {
                                     "type": "regex",
@@ -496,6 +520,9 @@
                             "required": false,
                             "defaultValue": "1048576",
                             "help": "Flush when buffered HEC payload bytes reach this threshold.",
+                            "options": {
+                                "display": false
+                            },
                             "validators": [
                                 {
                                     "type": "regex",
@@ -511,6 +538,9 @@
                             "required": false,
                             "defaultValue": "250",
                             "help": "Flush interval used in hec_batch mode when event and byte thresholds are not reached.",
+                            "options": {
+                                "display": false
+                            },
                             "validators": [
                                 {
                                     "type": "regex",
@@ -526,6 +556,9 @@
                             "required": false,
                             "defaultValue": "5",
                             "help": "Retry attempts for failed HEC POST operations before dropping the batch.",
+                            "options": {
+                                "display": false
+                            },
                             "validators": [
                                 {
                                     "type": "regex",
@@ -541,6 +574,9 @@
                             "required": false,
                             "defaultValue": "200",
                             "help": "Initial retry delay for HEC failures. The delay doubles on each subsequent retry.",
+                            "options": {
+                                "display": false
+                            },
                             "validators": [
                                 {
                                     "type": "regex",
@@ -557,6 +593,16 @@
                                 "label": "Name"
                             },
                             {
+                                "field": "disabled",
+                                "label": "Status",
+                                "mapping": {
+                                    "1": "Disabled",
+                                    "true": "Disabled",
+                                    "0": "Enabled",
+                                    "false": "Enabled"
+                                }
+                            },
+                            {
                                 "field": "broker",
                                 "label": "Broker"
                             },
@@ -571,24 +617,22 @@
                             {
                                 "field": "index",
                                 "label": "Index"
-                            },
-                            {
-                                "field": "interval",
-                                "label": "Reconnect (s)"
-                            },
-                            {
-                                "field": "queue_maxsize",
-                                "label": "Queue Max"
-                            },
-                            {
-                                "field": "batch_mode",
-                                "label": "Batch Mode"
                             }
                         ],
                         "moreInfo": [
                             {
                                 "field": "name",
                                 "label": "Input Name"
+                            },
+                            {
+                                "field": "disabled",
+                                "label": "Status",
+                                "mapping": {
+                                    "1": "Disabled",
+                                    "true": "Disabled",
+                                    "0": "Enabled",
+                                    "false": "Enabled"
+                                }
                             },
                             {
                                 "field": "broker",
@@ -662,11 +706,27 @@
                         "actions": [
                             "edit",
                             "delete",
-                            "clone"
+                            "clone",
+                            "search"
                         ]
                     }
                 }
             ]
+        },
+        "dashboard": {
+            "panels": [
+                {
+                    "name": "default"
+                }
+            ],
+            "settings": {
+                "custom_license_usage": {
+                    "determine_by": "sourcetype",
+                    "search_condition": [
+                        "mqtt:message"
+                    ]
+                }
+            }
         }
     }
 }

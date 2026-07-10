@@ -2,7 +2,7 @@
 
 ## Phase 1 — Initial scaffold ✅
 
-- [x] globalConfig.json — MQTT Brokers configuration tab + MQTT Subscriber input
+- [x] globalConfig.json — Broker Connections (step 1) + MQTT Topic Subscriptions (step 2)
 - [x] package/app.manifest
 - [x] package/bin/mqtt_subscriber.py (entry point)
 - [x] package/bin/import_declare_test.py (sys.path bootstrap)
@@ -24,17 +24,27 @@
 - [ ] Run `ucc-gen build` from the repo root
 - [ ] Copy/sideload `output/TA-MQTT/` to `$SPLUNK_HOME/etc/apps/`
 - [ ] Restart Splunk: `splunk restart`
-- [ ] Confirm UI loads at Settings → Data inputs → MQTT Subscriber
+- [ ] Confirm UI loads at Inputs → MQTT Topic Subscription
 
 ## Phase 3 — First broker test
 
-- [ ] Navigate to Apps → MQTT Broker Add-on → Configuration → MQTT Brokers
-- [ ] Add a broker (e.g. test.mosquitto.org, port 1883, anonymous)
-- [ ] Navigate to Inputs → New Input → MQTT Subscriber
-- [ ] Subscribe to topic `#`, index `main`
+- [ ] Navigate to Apps → MQTT Broker Add-on → Configuration → Broker Connections
+- [ ] Add a broker (e.g. test.mosquitto.org, port 1883, anonymous, or with username/password)
+- [ ] Navigate to Inputs → MQTT Topic Subscription
+- [ ] Select the broker, subscribe to topic `#`, index `main`
 - [ ] Run search: `index=main sourcetype="mqtt:message"` — should see events
 
-## Phase 4 — TLS / mTLS test
+## Phase 3b — Broker TLS/mTLS UI (deferred)
+
+Runtime TLS/mTLS support exists in `input_module/mqtt_subscriber.py` but broker
+TLS fields are hidden in the Configuration UI until this phase is complete.
+
+- [ ] Re-enable broker TLS/mTLS fields in `globalConfig.json` (`use_tls`, `skip_verify`, `ca_cert`, `client_cert`, `client_key`)
+- [ ] Validate plain TLS, custom CA, skip-verify, and mTLS against Mosquitto test certs
+- [ ] Update Configuration page description and operator docs
+- [ ] Add TLS column back to broker connections table when appropriate
+
+## Phase 4 — TLS / mTLS test (backend validation)
 
 - [ ] Add a TLS broker: enable TLS, set port 8883
 - [ ] Test with `skip_verify=true` against a broker with self-signed cert

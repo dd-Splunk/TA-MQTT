@@ -1,60 +1,74 @@
 # Configuration and Events
 
-This guide explains the current broker configuration model, input fields, event
-envelope, and search-time field behavior.
+TA-MQTT uses a two-step configuration model:
 
-## Configure a Broker
+1. **Broker connections** (`Configuration → Broker Connections`) — how to reach an
+   MQTT broker (host, port, optional credentials).
+2. **Topic subscriptions** (`Inputs → MQTT Topic Subscription`) — which broker to
+   use and which topic filter to subscribe to (wildcards supported).
+
+Each subscription runs as its own modular-input process. It opens one MQTT
+connection using the selected broker definition and subscribes to the configured
+topic filter.
+
+## Step 1 — Configure a Broker Connection
 
 In Splunk Web:
 
 1. Open the TA-MQTT app.
-2. Go to `Configuration > MQTT Brokers`.
+2. Go to `Configuration → Broker Connections`.
 3. Create a broker entry.
 
-Common fields:
+Fields:
 
-- `name`
-- `host`
-- `port`
-- Optional credentials: `username`, `password`
-- Optional TLS settings: `use_tls`, `skip_verify`, `ca_cert`, `client_cert`, `client_key`
+| Field | Required | Notes |
+| --- | --- | --- |
+| `name` | yes | Unique identifier referenced by subscriptions |
+| `host` | yes | Hostname or IP |
+| `port` | yes | Default `1883` (plain MQTT) |
+| `username` | no | Leave empty for anonymous access |
+| `password` | no | Leave empty for anonymous access; stored encrypted |
 
-Broker names are referenced by inputs through the `broker` field. They must be
-unique and use letters, digits, and underscores.
+Broker names must start with a letter and contain only letters, digits, and
+underscores.
 
-## Create an Input
+### TLS / mTLS (planned)
 
-In `Inputs > MQTT Subscriber`:
+TLS and mutual TLS broker settings exist in the schema and runtime code but are
+**not yet exposed in the Configuration UI**. See `tasks/todo.md` — phase
+*Broker TLS/mTLS UI*.
 
-- Select `broker`
-- Set `topic` (wildcards supported)
-- Set `qos` (0, 1, or 2)
-- Optional `mqtt_client_id` (empty or `AUTO` generates one)
-- Set `index`
-- Optional `sourcetype` (defaults to `mqtt:message`)
-- Optional `interval` for reconnect delay after unexpected disconnects
+## Step 2 — Create a Topic Subscription
 
-Current input field names in the UCC schema are:
+In `Inputs → MQTT Topic Subscription`:
 
-- `name`
-- `broker`
-- `topic`
-- `qos`
-- `mqtt_client_id`
-- `index`
-- `sourcetype`
-- `interval`
+| Field | Required | Notes |
+| --- | --- | --- |
+| `name` | yes | Subscription name |
+| `broker` | yes | Broker connection name from step 1 |
+| `topic` | yes | MQTT topic filter (`#`, `+` wildcards) |
+| `qos` | yes | `0`, `1`, or `2` |
+| `index` | yes | Splunk destination index |
+| `sourcetype` | no | Defaults to `mqtt:message` |
 
-If `mqtt_client_id` is left empty or set to `AUTO`, the add-on generates a
-deterministic client ID based on the stanza name.
+### Enable or disable a subscription
+
+Each row shows a **Status** column (`Enabled` / `Disabled`). Click the status to
+toggle the subscription without deleting it. When disabled, Splunk does not
+launch the modular-input process — no MQTT connection and no message consumption.
 
 ## Runtime Architecture
 
 Each `mqtt_subscriber` stanza runs as its own modular-input process.
 
+- Loads broker connection settings from `ta_mqtt_mqtt_broker.conf`.
+- Connects to the broker and subscribes to the configured topic filter.
 - The MQTT client receives messages on paho-mqtt's network thread.
 - Messages are queued into a bounded in-memory queue.
-- The main thread drains that queue and calls `ew.write_event()`.
+- The main thread drains that queue and sends batched NDJSON payloads to Splunk
+  HEC (`batch_mode=1`, the default for all inputs).
+- Per-input HEC tokens are provisioned automatically when a subscription is
+  created.
 - Runtime health summaries are logged every 60 seconds.
 
 ## Event Format
@@ -81,7 +95,7 @@ written to Splunk:
 - `host`: broker host
 - `source`: `mqtt://<host>:<port>/<topic>`
 - `sourcetype`: `mqtt:message` by default
-- `index`: input-configurable, defaults to `default`
+- `index`: subscription-configurable, defaults to `default`
 
 ## Field Extraction Behavior
 

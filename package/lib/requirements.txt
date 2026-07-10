@@ -4,4 +4,4 @@
 # during `ucc-gen build`.  Exact versions are pinned for reproducibility.
 
 paho-mqtt==1.6.1
-splunktaucclib>=6.6.0
+splunktaucclib==8.2.0

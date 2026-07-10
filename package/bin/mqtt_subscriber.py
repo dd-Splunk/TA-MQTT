@@ -32,10 +32,10 @@ class ModInputMqttSubscriber(bmi.BaseModInput):
 
     def get_scheme(self):
         scheme = super().get_scheme()
-        scheme.title = "MQTT Subscriber"
+        scheme.title = "MQTT Topic Subscription"
         scheme.description = (
-            "Subscribe to one or more MQTT topic filters on a configured "
-            "broker and forward messages to a Splunk index."
+            "Subscribe to an MQTT topic filter on a broker connection defined "
+            "under Configuration. Each subscription uses its own MQTT client."
         )
         scheme.use_external_validation = True
         scheme.streaming_mode_xml = True
@@ -49,8 +49,7 @@ class ModInputMqttSubscriber(bmi.BaseModInput):
         return []
 
     def get_checkbox_fields(self):
-        # This input does not define checkbox fields in the data input stanza.
-        return []
+        return ["disabled"]
 
     def validate_input(self, definition):
         return validate_input(self, definition)

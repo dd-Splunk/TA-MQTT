@@ -8,12 +8,12 @@ lives under `docs/`.
 
 ## Features
 
-- Multiple broker definitions
-- Anonymous, username/password, TLS, and mTLS connectivity
-- QoS 0/1/2 subscriptions with wildcard topics
+- Multiple broker connection definitions (host, port, username/password)
+- Topic subscriptions per broker with QoS 0/1/2 and wildcard filters
 - JSON event envelope with consistent metadata (`broker`, `mqtt_host`, `topic`, etc.)
 - Configurable queue capacity, reconnect backoff/cooldown resilience, and runtime health metrics
 - HEC batch egress with per-input token lifecycle management
+- Broker TLS/mTLS (runtime implemented; Configuration UI deferred — see `tasks/todo.md`)
 - Local Docker test stack with Splunk and Mosquitto for repeatable validation
 
 ## Quick Start
@@ -22,7 +22,7 @@ lives under `docs/`.
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements-build.txt
-./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 2.1.1
+./.venv/bin/ucc-gen build --python-binary-name ./.venv/bin/python --ta-version 2.2.0 --overwrite
 docker compose up -d
 ```
 
@@ -53,6 +53,8 @@ GitHub Actions workflow: `.github/workflows/build-and-release.yml`
 - Builds run on every push to `main` and `develop`, and on pull requests to those branches.
 - Python is pinned to `3.13` in CI.
 - Build version is read from `package/app.manifest` and passed to `ucc-gen build --ta-version`.
+- UCC framework is pinned in `requirements-build.txt` (currently `6.5.0`).
+- `ucc-gen validate` runs on the built add-on before packaging (AppInspect).
 - Output is packaged as `TA-MQTT-<version>.spl`.
 - On `main` pushes, CI publishes a prerelease stream with immutable per-commit tags (`build-<shortsha>`).
 - On semantic tags `vX.Y.Z`, CI publishes a stable GitHub Release.
