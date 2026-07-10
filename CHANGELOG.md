@@ -2,6 +2,15 @@
 
 All notable changes to TA-MQTT should be documented in this file.
 
+## [Unreleased]
+
+### Security
+
+- Added `SECURITY.md` vulnerability disclosure policy.
+- Added Dependabot for pip (`/`, `package/lib`) and GitHub Actions.
+- Added Gitleaks secret scanning workflow on pull requests and branch pushes.
+- Pinned all GitHub Actions to immutable commit SHAs in CI workflows.
+
 ## [2.2.0] - 2026-07-10
 
 ### Added in 2.2.0

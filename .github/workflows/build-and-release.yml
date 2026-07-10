@@ -29,12 +29,12 @@ jobs:
             build_tag: ${{ steps.meta.outputs.build_tag }}
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
               with:
                   fetch-depth: 0
 
             - name: Set up Python 3.13
-              uses: actions/setup-python@v5
+              uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
               with:
                   python-version: "3.13"
 
@@ -146,7 +146,7 @@ jobs:
 
             - name: Upload AppInspect report
               if: always()
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
               with:
                   name: appinspect-report
                   path: artifacts/appinspect.json
@@ -185,7 +185,7 @@ jobs:
                   fi
 
             - name: Upload packaged artifact
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
               with:
                   name: ta-mqtt-spl
                   path: dist/${{ steps.package.outputs.spl_name }}
@@ -200,13 +200,13 @@ jobs:
             contents: write
         steps:
             - name: Download packaged artifact
-              uses: actions/download-artifact@v4
+              uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
               with:
                   name: ta-mqtt-spl
                   path: dist
 
             - name: Publish prerelease for this commit
-              uses: softprops/action-gh-release@v2
+              uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
               with:
                   tag_name: ${{ needs.build.outputs.build_tag }}
                   name: latest (prerelease) - ${{ needs.build.outputs.build_tag }}
@@ -240,13 +240,13 @@ jobs:
                   fi
 
             - name: Download packaged artifact
-              uses: actions/download-artifact@v4
+              uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
               with:
                   name: ta-mqtt-spl
                   path: dist
 
             - name: Publish stable release
-              uses: softprops/action-gh-release@v2
+              uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
               with:
                   tag_name: ${{ github.ref_name }}
                   name: TA-MQTT v${{ needs.build.outputs.app_version }}
