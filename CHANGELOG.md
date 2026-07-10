@@ -4,6 +4,13 @@ All notable changes to TA-MQTT should be documented in this file.
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-07-10
+
+### Changed in 2.3.0
+
+- Migrated bundled MQTT client from **paho-mqtt 1.6.1** to **2.1.0** with `CallbackAPIVersion.VERSION2` callbacks in the modular input.
+- Fixed `ta_mqtt_settings.conf` precedence so `local/` overrides `default/` for `allow_insecure_tls` and other settings.
+
 ### Security
 
 - Added CodeQL static analysis workflow for Python (`package/bin/`) with documented suppressions for Splunk localhost REST TLS.

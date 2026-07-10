@@ -82,26 +82,25 @@ def _read_ta_mqtt_settings_option(
 ) -> str:
     """Read a TA-MQTT settings value from local/default ta_mqtt_settings.conf."""
     splunk_home = os.environ.get("SPLUNK_HOME", "/opt/splunk")
-    conf_paths = (
-        os.path.join(
-            splunk_home,
-            "etc",
-            "apps",
-            "TA-MQTT",
-            "local",
-            "ta_mqtt_settings.conf",
-        ),
-        os.path.join(
-            splunk_home,
-            "etc",
-            "apps",
-            "TA-MQTT",
-            "default",
-            "ta_mqtt_settings.conf",
-        ),
+    default_path = os.path.join(
+        splunk_home,
+        "etc",
+        "apps",
+        "TA-MQTT",
+        "default",
+        "ta_mqtt_settings.conf",
+    )
+    local_path = os.path.join(
+        splunk_home,
+        "etc",
+        "apps",
+        "TA-MQTT",
+        "local",
+        "ta_mqtt_settings.conf",
     )
     parser = configparser.ConfigParser()
-    parser.read(conf_paths)
+    parser.read(default_path)
+    parser.read(local_path)
     if parser.has_option(section, option):
         return parser.get(section, option)
     return default
@@ -112,6 +111,15 @@ def _insecure_tls_allowed() -> bool:
     return _is_true(
         _read_ta_mqtt_settings_option("security", "allow_insecure_tls", "0")
     )
+
+
+def _mqtt_rc_value(rc: Any) -> int:
+    """Normalize paho-mqtt v1 int / v2 ReasonCode values to an integer."""
+    return int(getattr(rc, "value", rc))
+
+
+def _mqtt_rc_is_success(rc: Any) -> bool:
+    return _mqtt_rc_value(rc) == mqtt.MQTT_ERR_SUCCESS
 
 
 def _require_insecure_tls_allowed(feature: str) -> None:
@@ -1057,17 +1065,21 @@ def collect_events(helper, ew) -> None:
             f"lag_max_ms={lag_max_ms:.2f}{idle_fragment}{drop_fragment}"
         )
 
-    # ── MQTT callbacks ────────────────────────────────────────────────────
-    def on_connect(client, userdata, flags, rc):
-        if rc == mqtt.MQTT_ERR_SUCCESS:
+    # ── MQTT callbacks (paho-mqtt 2.x CallbackAPIVersion.VERSION2) ───────
+    def on_connect(client, userdata, flags, reason_code, properties):
+        del userdata, flags, properties
+        if _mqtt_rc_is_success(reason_code):
             helper.log_info(
                 f"Connected to {host}:{port} as {client_id!r}.  "
                 f"Subscribing to '{topic}' QoS {qos}."
             )
             result, mid = client.subscribe(topic, qos=qos)
-            if result != mqtt.MQTT_ERR_SUCCESS:
-                helper.log_error(f"Subscribe call failed: rc={result}")
+            if not _mqtt_rc_is_success(result):
+                helper.log_error(
+                    f"Subscribe call failed: rc={_mqtt_rc_value(result)}"
+                )
         else:
+            rc = _mqtt_rc_value(reason_code)
             reason = {
                 1: "Unacceptable protocol version",
                 2: "Identifier rejected",
@@ -1077,16 +1089,20 @@ def collect_events(helper, ew) -> None:
             }.get(rc, f"Unknown rc={rc}")
             helper.log_error(f"MQTT connection refused: {reason}")
 
-    def on_disconnect(client, userdata, rc):
-        if rc == mqtt.MQTT_ERR_SUCCESS:
+    def on_disconnect(client, userdata, disconnect_flags, reason_code, properties):
+        del client, userdata, disconnect_flags, properties
+        if _mqtt_rc_is_success(reason_code):
             helper.log_info("MQTT disconnected cleanly.")
         else:
             helper.log_warning(
-                f"Unexpected disconnection from {host}:{port}  rc={rc}.  "
+                f"Unexpected disconnection from {host}:{port}  "
+                f"rc={_mqtt_rc_value(reason_code)}.  "
                 f"Will retry in {interval}s."
             )
 
-    def on_subscribe(client, userdata, mid, granted_qos):
+    def on_subscribe(client, userdata, mid, reason_code_list, properties):
+        del client, userdata, mid, properties
+        granted_qos = [_mqtt_rc_value(rc) for rc in reason_code_list]
         helper.log_info(
             f"Subscription confirmed  topic={topic!r}  " f"granted_qos={granted_qos}"
         )
@@ -1115,6 +1131,7 @@ def collect_events(helper, ew) -> None:
 
     # ── Build MQTT client ─────────────────────────────────────────────────
     client = mqtt.Client(
+        callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
         client_id=client_id,
         clean_session=True,
         protocol=mqtt.MQTTv311,

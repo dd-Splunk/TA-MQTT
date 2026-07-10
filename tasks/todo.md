@@ -12,7 +12,7 @@
 - [x] package/default/props.conf
 - [x] package/default/transforms.conf
 - [x] package/default/ta_mqtt_settings.conf
-- [x] package/lib/requirements.txt (paho-mqtt==1.6.1)
+- [x] package/lib/requirements.txt (paho-mqtt==2.1.0)
 - [x] package/metadata/default.meta
 - [x] additional_packaging.py (pip hook)
 - [x] requirements-build.txt
