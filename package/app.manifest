@@ -5,7 +5,7 @@
     "id": {
       "group": null,
       "name": "TA-MQTT",
-      "version": "2.3.0"
+      "version": "2.4.0"
     },
     "author": [
       {
@@ -14,12 +14,15 @@
         "company": "Cisco"
       }
     ],
-    "releaseDate": null,
-    "description": "Multi-broker MQTT add-on for Splunk. Supports anonymous access, username/password, plain TLS, and mutual TLS (mTLS) with optional client certificates and skip-verify mode.",
+    "releaseDate": "2026-07-10",
+    "description": "Multi-broker MQTT add-on for Splunk. Supports anonymous access, username/password, plain TLS, and mutual TLS (mTLS) with optional client certificates and CA pinning.",
     "classification": {
-      "intendedAudience": null,
-      "categories": [],
-      "developmentStatus": "Development"
+      "intendedAudience": "Splunk administrators and IoT platform operators",
+      "categories": [
+        "IoT",
+        "IT Operations"
+      ],
+      "developmentStatus": "Beta"
     },
     "commonInformationModels": null,
     "license": {
@@ -30,7 +33,7 @@
       "name": "",
       "url": null
     },
-    "releaseNotes": "* Monitoring dashboard uses one global time picker for all panels (60s auto-refresh). Search view lists mqtt:message events. Broker TLS/mTLS fields remain hidden in Configuration UI until a follow-up release."
+    "releaseNotes": "* Broker TLS/mTLS fields are exposed in Configuration → Broker Connections (use_tls, CA/client PEM, skip_verify gated by Security → Allow insecure TLS).\n* Monitoring dashboard uses one global time picker for all panels (60s auto-refresh).\n* Search view lists mqtt:message events."
   },
   "dependencies": null,
   "tasks": null,

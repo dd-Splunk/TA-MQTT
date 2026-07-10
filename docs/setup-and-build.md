@@ -97,7 +97,8 @@ After a successful build, these navigation items should load in Splunk Web (`htt
 | **Monitoring Dashboard** | UCC telemetry dashboard (one global time picker, 60s refresh) |
 | **Search** | Simple event table for `sourcetype=mqtt:message` |
 
-Custom dashboard JSON is patched at build time by `additional_packaging.py`; see [Troubleshooting](./troubleshooting.md) if the Monitoring dashboard fails to load.
+Custom dashboard JSON is patched at build time by `additional_packaging()` in
+`additional_packaging.py`; see [Troubleshooting](./troubleshooting.md) if the Monitoring dashboard fails to load.
 
 ## Health Checks
 

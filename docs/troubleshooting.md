@@ -198,7 +198,9 @@ field discovery from old events.
 
 ## Monitoring dashboard shows unknown error or duplicate time pickers
 
-The UCC-generated Monitoring dashboard is post-processed by `additional_packaging.py`
+The UCC-generated Monitoring dashboard is post-processed by `additional_packaging()`
+in `additional_packaging.py` (invoked after `cleanup_output_files()` during
+`ucc-gen build`).
 to use a single global time token (`global_time`) and 60s auto-refresh.
 
 After changing dashboard packaging logic:

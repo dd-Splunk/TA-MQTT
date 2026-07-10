@@ -32,11 +32,20 @@ Fields:
 Broker names must start with a letter and contain only letters, digits, and
 underscores.
 
-### TLS / mTLS (planned)
+### TLS / mTLS
 
-TLS and mutual TLS broker settings exist in the schema and runtime code but are
-**not yet exposed in the Configuration UI**. See `tasks/todo.md` — phase
-*Broker TLS/mTLS UI*.
+Enable **Enable TLS/SSL** on the broker connection. Use port `8883` for typical TLS
+brokers unless your environment uses another port.
+
+| Field | Required | Notes |
+| --- | --- | --- |
+| `use_tls` | no | Encrypt the MQTT transport |
+| `ca_cert` | no | PEM CA to verify the broker; empty uses the system trust store |
+| `client_cert` / `client_key` | no | PEM pair for mutual TLS (mTLS); both required when using client auth |
+| `skip_verify` | no | Skips server certificate validation; requires **Allow insecure TLS** under Configuration → Security (advanced) |
+
+For lab brokers with self-signed certificates, enable **Allow insecure TLS** on the
+Security tab before setting `skip_verify` on the broker.
 
 ## Step 2 — Create a Topic Subscription
 

@@ -4,14 +4,28 @@ All notable changes to TA-MQTT should be documented in this file.
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-07-10
+
+### Added in 2.4.0
+
+- Broker TLS/mTLS fields in Configuration → Broker Connections (`use_tls`, CA/client PEM, `skip_verify`).
+- TLS column on the broker connections table.
+- **Allow insecure TLS** visible under Configuration → Security (advanced); required for `skip_verify` and HEC TLS bypass.
+
+### Changed in 2.4.0
+
+- Split UCC post-build hooks: `cleanup_output_files()` (bytecode) and `additional_packaging()` (dashboard patches) per UCC documentation.
+- Updated `app.manifest` classification (Beta, IoT/IT Operations audience) and release metadata.
+
 ### Documentation
 
 - Build docs now derive `--ta-version` from `package/app.manifest` instead of a hardcoded release.
 - Documented `allow_insecure_tls` gate for lab TLS/HEC testing in troubleshooting and `tasks/todo.md`.
-- Updated `SECURITY.md` supported versions for 2.3.x.
+- Updated `SECURITY.md` supported versions for 2.4.x.
 - Added `docs/branching-policy.md` and created protected `develop` integration branch.
 - Added `docs/prereleases.md`; CI prunes `build-*` prereleases beyond the 10 most recent.
 - Documented local workspace hygiene in `docs/setup-and-build.md`; removed stale `tmp_output/`, local `artifacts/` logs, and old `dist/*.spl`.
+- Documented broker TLS/mTLS configuration in `docs/configuration-and-events.md`.
 
 ## [2.3.0] - 2026-07-10
 

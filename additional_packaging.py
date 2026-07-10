@@ -66,8 +66,23 @@ DASHBOARD_DEFINITION_FILES = (
 )
 
 
+def additional_packaging(ta_name: str | None = None) -> None:
+    """Patch UCC monitoring dashboard assets after the build output is ready."""
+    name = ta_name or "TA-MQTT"
+    output_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", name)
+    if not os.path.isdir(output_root):
+        return
+
+    patched_defs = patch_dashboard_definitions(output_root)
+    patched_styles = patch_dashboard_page_styles(output_root)
+    print(
+        "[additional_packaging] Dashboard patch complete "
+        f"patched_dashboard_definitions={patched_defs} patched_dashboard_styles={patched_styles}"
+    )
+
+
 def cleanup_output_files(output_path: str, ta_name: str) -> None:
-    """Remove rejected bytecode artifacts and patch monitoring dashboard assets."""
+    """Remove bytecode artifacts that AppInspect rejects from build output."""
     output_root = os.path.join(output_path, ta_name)
     if not os.path.isdir(output_root):
         return
@@ -92,13 +107,9 @@ def cleanup_output_files(output_path: str, ta_name: str) -> None:
                 except OSError:
                     pass
 
-    patched_defs = patch_dashboard_definitions(output_root)
-    patched_styles = patch_dashboard_page_styles(output_root)
-
     print(
         "[additional_packaging] Cleanup complete "
-        f"removed_pycache_dirs={removed_dirs} removed_bytecode_files={removed_files} "
-        f"patched_dashboard_definitions={patched_defs} patched_dashboard_styles={patched_styles}"
+        f"removed_pycache_dirs={removed_dirs} removed_bytecode_files={removed_files}"
     )
 
 

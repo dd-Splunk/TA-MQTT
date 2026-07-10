@@ -2,7 +2,7 @@
     "meta": {
         "name": "TA-MQTT",
         "restRoot": "TA_MQTT",
-        "version": "2.3.0",
+        "version": "2.4.0",
         "displayName": "MQTT Broker Add-on for Splunk",
         "schemaVersion": "0.0.10",
         "supportedPythonVersion": [
@@ -13,7 +13,7 @@
     "pages": {
         "configuration": {
             "title": "Brokers",
-            "description": "Step 1 — Define MQTT broker connections (host, port, optional username/password). Topic subscriptions are configured separately under Inputs.",
+            "description": "Step 1 — Define MQTT broker connections (host, port, credentials, optional TLS/mTLS). Topic subscriptions are configured separately under Inputs.",
             "tabs": [
                 {
                     "name": "mqtt_broker",
@@ -107,10 +107,7 @@
                             "type": "checkbox",
                             "required": false,
                             "defaultValue": false,
-                            "help": "Encrypt the connection with TLS. Required for mTLS brokers.",
-                            "options": {
-                                "display": false
-                            }
+                            "help": "Encrypt the connection with TLS. Required for mTLS brokers."
                         },
                         {
                             "field": "skip_verify",
@@ -118,19 +115,13 @@
                             "type": "checkbox",
                             "required": false,
                             "defaultValue": false,
-                            "help": "⚠️ Disables server certificate validation. Allows connecting to mTLS-enabled brokers without a trusted CA certificate. Use only in development or when the broker uses a self-signed certificate.",
-                            "options": {
-                                "display": false
-                            }
+                            "help": "Disables server certificate validation. Requires **Allow insecure TLS** under Configuration → Security (advanced). Use only in development or with self-signed broker certificates."
                         },
                         {
                             "field": "ca_cert",
                             "label": "CA Certificate (PEM)",
                             "type": "textarea",
                             "required": false,
-                            "options": {
-                                "display": false
-                            },
                             "help": "Optional. PEM-encoded CA certificate used to verify the broker's server certificate. If empty, the system trust store is used. Ignored when 'Skip TLS Certificate Verification' is checked.",
                             "validators": [
                                 {
@@ -146,9 +137,6 @@
                             "label": "Client Certificate (PEM)",
                             "type": "textarea",
                             "required": false,
-                            "options": {
-                                "display": false
-                            },
                             "help": "Optional. PEM-encoded client certificate for mutual TLS (mTLS) authentication. Must be provided together with the Client Private Key.",
                             "validators": [
                                 {
@@ -165,9 +153,6 @@
                             "type": "textarea",
                             "required": false,
                             "encrypted": true,
-                            "options": {
-                                "display": false
-                            },
                             "help": "Optional. PEM-encoded private key corresponding to the client certificate. Stored encrypted. Must be provided together with the Client Certificate.",
                             "validators": [
                                 {
@@ -196,6 +181,10 @@
                             {
                                 "field": "username",
                                 "label": "Username"
+                            },
+                            {
+                                "field": "use_tls",
+                                "label": "TLS"
                             }
                         ],
                         "actions": [
@@ -261,10 +250,7 @@
                             "type": "checkbox",
                             "required": false,
                             "defaultValue": false,
-                            "help": "When enabled, permits MQTT skip_verify and disabled HEC TLS verification. Keep disabled in production.",
-                            "options": {
-                                "display": false
-                            }
+                            "help": "When enabled, permits MQTT skip_verify and disabled HEC TLS verification. Keep disabled in production."
                         }
                     ]
                 }

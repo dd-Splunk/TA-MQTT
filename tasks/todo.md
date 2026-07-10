@@ -34,15 +34,16 @@
 - [ ] Select the broker, subscribe to topic `#`, index `main`
 - [ ] Run search: `index=main sourcetype="mqtt:message"` — should see events
 
-## Phase 3b — Broker TLS/mTLS UI (deferred)
+## Phase 3b — Broker TLS/mTLS UI ✅
 
-Runtime TLS/mTLS support exists in `input_module/mqtt_subscriber.py` but broker
-TLS fields are hidden in the Configuration UI until this phase is complete.
+Runtime TLS/mTLS support exists in `input_module/mqtt_subscriber.py`; broker TLS
+fields are exposed in Configuration → Broker Connections as of v2.4.0.
 
-- [ ] Re-enable broker TLS/mTLS fields in `globalConfig.json` (`use_tls`, `skip_verify`, `ca_cert`, `client_cert`, `client_key`)
+- [x] Re-enable broker TLS/mTLS fields in `globalConfig.json` (`use_tls`, `skip_verify`, `ca_cert`, `client_cert`, `client_key`)
+- [x] Expose **Allow insecure TLS** on Configuration → Security (advanced)
+- [x] Add TLS column to broker connections table
 - [ ] Validate plain TLS, custom CA, skip-verify, and mTLS against Mosquitto test certs
-- [ ] Update Configuration page description and operator docs
-- [ ] Add TLS column back to broker connections table when appropriate
+- [x] Update Configuration page description and operator docs
 
 ## Phase 4 — TLS / mTLS test (backend validation)
 
