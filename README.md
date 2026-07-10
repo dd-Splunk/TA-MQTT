@@ -40,6 +40,7 @@ Local development and CI builds are pinned to Python 3.13.
 ## Documentation
 
 - [Setup and Build](docs/setup-and-build.md)
+- [Branching Policy](docs/branching-policy.md)
 - [Configuration and Events](docs/configuration-and-events.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Performance Testing](docs/performance-testing.md)
@@ -51,7 +52,9 @@ Local development and CI builds are pinned to Python 3.13.
 
 GitHub Actions workflow: `.github/workflows/build-and-release.yml`
 
-- Builds run on every push to `main` and `develop`, and on pull requests to those branches.
+Branching model: see [Branching Policy](docs/branching-policy.md) (`develop` = integration, `main` = release line).
+
+- Builds run on every push to `main` and `develop`, and on pull requests targeting those branches.
 - Python is pinned to `3.13` in CI.
 - Build version is read from `package/app.manifest` and passed to `ucc-gen build --ta-version`.
 - UCC framework is pinned in `requirements-build.txt` (currently `6.5.0`).
