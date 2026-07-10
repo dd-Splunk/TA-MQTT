@@ -260,7 +260,7 @@
                             "label": "Allow insecure TLS (dev/lab)",
                             "type": "checkbox",
                             "required": false,
-                            "defaultValue": "0",
+                            "defaultValue": false,
                             "help": "When enabled, permits MQTT skip_verify and disabled HEC TLS verification. Keep disabled in production.",
                             "options": {
                                 "display": false
