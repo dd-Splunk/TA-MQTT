@@ -196,6 +196,35 @@ docker exec -u splunk splunk /opt/splunk/bin/splunk btool props list mqtt:messag
 If duplicates remain, run a fresh search window (`earliest=-15m`) to avoid stale
 field discovery from old events.
 
+## Configuration page shows "Unknown error"
+
+This often appears when the UCC Configuration table cannot render a column. Boolean
+fields such as `use_tls` must use a `mapping` in the table `header`, for example:
+
+```json
+{
+  "field": "use_tls",
+  "label": "TLS",
+  "mapping": {
+    "0": "No",
+    "1": "Yes",
+    "false": "No",
+    "true": "Yes",
+    "[[default]]": "No"
+  }
+}
+```
+
+After changing `globalConfig.json`, rebuild with `ucc-gen build ... --overwrite` and
+restart Splunk.
+
+Check Splunk internal logs for the root cause:
+
+```spl
+index=_internal source=*splunkd* (component=PersistentScript OR component=ExecProcessor)
+  (TA_MQTT OR TA-MQTT) (ERROR OR stderr)
+```
+
 ## Monitoring dashboard shows unknown error or duplicate time pickers
 
 The UCC-generated Monitoring dashboard is post-processed by `additional_packaging()`

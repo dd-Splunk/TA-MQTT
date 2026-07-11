@@ -2,7 +2,7 @@
     "meta": {
         "name": "TA-MQTT",
         "restRoot": "TA_MQTT",
-        "version": "2.4.0",
+        "version": "2.4.1",
         "displayName": "MQTT Broker Add-on for Splunk",
         "schemaVersion": "0.0.10",
         "supportedPythonVersion": [
@@ -115,7 +115,7 @@
                             "type": "checkbox",
                             "required": false,
                             "defaultValue": false,
-                            "help": "Disables server certificate validation. Requires **Allow insecure TLS** under Configuration → Security (advanced). Use only in development or with self-signed broker certificates."
+                            "help": "Disables server certificate validation. Requires Allow insecure TLS under Configuration → Security (advanced). Use only in development or with self-signed broker certificates."
                         },
                         {
                             "field": "ca_cert",
@@ -184,7 +184,14 @@
                             },
                             {
                                 "field": "use_tls",
-                                "label": "TLS"
+                                "label": "TLS",
+                                "mapping": {
+                                    "0": "No",
+                                    "1": "Yes",
+                                    "false": "No",
+                                    "true": "Yes",
+                                    "[[default]]": "No"
+                                }
                             }
                         ],
                         "actions": [

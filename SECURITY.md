@@ -5,7 +5,7 @@
 | Version | Supported |
 | ------- | --------- |
 | 2.4.x   | Yes       |
-| 2.3.x   | Limited (critical fixes only; upgrade to 2.4.x recommended) |
+| 2.3.x   | No        |
 | 2.2.x   | No        |
 | < 2.2   | No        |
 

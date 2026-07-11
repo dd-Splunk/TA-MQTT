@@ -4,6 +4,13 @@ All notable changes to TA-MQTT should be documented in this file.
 
 ## [Unreleased]
 
+## [2.4.1] - 2026-07-11
+
+### Fixed in 2.4.1
+
+- Fixed Configuration **unknown error** when the broker table rendered the `use_tls` checkbox without a value mapping (UCC table requires `mapping` for boolean columns).
+- Normalized lab broker stanzas to `use_tls=0` / `skip_verify=0` instead of string `false`.
+
 ## [2.4.0] - 2026-07-10
 
 ### Added in 2.4.0
