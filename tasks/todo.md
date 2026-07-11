@@ -35,7 +35,7 @@ lab tests that use `skip_verify` (not for production).
 ### P3 — Production & distribution
 
 - [ ] Splunk saved search / alert: `index=_internal sourcetype=splunkd ERROR ta-mqtt`
-- [ ] Optional: `props.conf` / `INDEXED_EXTRACTIONS` for JSON payload sub-fields
+- [x] JSON MQTT bodies sent as HEC `event`; envelope in HEC `fields`; `KV_MODE=json` extracts keys
 - [ ] Splunkbase publication (optional) — privacy policy URL, support contact, package checklist
 - [ ] Consider `check_for_updates = true` in `app.conf` once Splunkbase or release feed exists
 

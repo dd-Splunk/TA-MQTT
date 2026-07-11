@@ -178,6 +178,65 @@ def _decode_payload(payload_bytes: Any) -> Dict[str, Any]:
         }
 
 
+def _parse_json_object(payload_text: str) -> Dict[str, Any] | None:
+    """Return a dict when payload_text is a JSON object; otherwise None."""
+    if not isinstance(payload_text, str):
+        return None
+
+    stripped = payload_text.strip()
+    if not stripped.startswith("{") or not stripped.endswith("}"):
+        return None
+
+    try:
+        parsed = json.loads(stripped)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return None
+
+    return parsed if isinstance(parsed, dict) else None
+
+
+def _enrich_envelope_cim(fields: Dict[str, Any]) -> Dict[str, Any]:
+    """Add CIM-oriented envelope fields for IoT / Network Traffic models."""
+    topic = str(fields.get("topic", "") or "")
+    parts = topic.split("/")
+
+    if len(parts) >= 4 and parts[2].isalnum():
+        fields["dvc"] = parts[2]
+        fields["src"] = parts[2]
+
+    if len(parts) >= 4 and parts[3]:
+        fields["mqtt_message_type"] = parts[3]
+        fields["action"] = parts[3]
+
+    broker = fields.get("broker")
+    if broker:
+        fields["app"] = broker
+
+    fields["transport"] = "mqtt"
+    return fields
+
+
+def _hec_event_parts(event_dict: Dict[str, Any]) -> tuple[Any, Dict[str, Any] | None]:
+    """
+    Split an MQTT event for Splunk HEC.
+
+    JSON MQTT bodies are sent as the HEC ``event`` so ``KV_MODE=json`` can extract
+    their keys from ``_raw``. Envelope metadata is sent via HEC ``fields``.
+    """
+    payload_text = event_dict.get("payload", "")
+    parsed_body = _parse_json_object(payload_text)
+    if parsed_body is None:
+        return event_dict, None
+
+    envelope = _enrich_envelope_cim(dict(event_dict))
+    if parsed_body is not None:
+        # Keep audit copy but avoid indexing the same JSON twice (event body + payload field).
+        payload_text = envelope.pop("payload", "")
+        if payload_text:
+            envelope["mqtt_payload"] = payload_text
+    return parsed_body, envelope
+
+
 def _get_broker_config(helper, broker_name: str) -> Dict[str, str]:
     """
     Retrieve a broker stanza from ``ta_mqtt_mqtt_broker.conf`` via the
@@ -516,13 +575,16 @@ class _HecBatchWriter(_EgressWriter):
         port: int,
     ) -> str:
         topic = event_dict.get("topic", "")
-        hec_event = {
-            "event": event_dict,
+        event_body, envelope_fields = _hec_event_parts(event_dict)
+        hec_event: Dict[str, Any] = {
+            "event": event_body,
             "host": host,
             "source": f"mqtt://{host}:{port}/{topic}",
             "sourcetype": self._sourcetype,
             "index": self._index,
         }
+        if envelope_fields:
+            hec_event["fields"] = envelope_fields
         return json.dumps(hec_event, ensure_ascii=False, separators=(",", ":"))
 
     def write(self, event_dict: Dict[str, Any], host: str, port: int) -> None:

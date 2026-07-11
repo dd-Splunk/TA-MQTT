@@ -16,7 +16,7 @@
             <table>
                 <search>
                     <query>index=* sourcetype="mqtt:message"
-| table _time, host, source, topic, payload
+| table _time, host, topic, dvc, src, dest, app, action, transport, temperature_celsius, humidity_percent, pressure_millibar, illuminance_lux, uv_index, mqtt_payload
 | sort - _time</query>
                     <earliest>$time_token.earliest$</earliest>
                     <latest>$time_token.latest$</latest>

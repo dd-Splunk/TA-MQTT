@@ -2,7 +2,7 @@
     "meta": {
         "name": "TA-MQTT",
         "restRoot": "TA_MQTT",
-        "version": "2.4.1",
+        "version": "2.4.2",
         "displayName": "MQTT Broker Add-on for Splunk",
         "schemaVersion": "0.0.10",
         "supportedPythonVersion": [

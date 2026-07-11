@@ -110,31 +110,34 @@ written to Splunk:
 
 For `sourcetype=mqtt:message`:
 
-- `KV_MODE=json` extracts top-level envelope fields.
-- `EVAL-... = spath(payload, "...")` extracts selected payload keys at search time.
-- Raw event data is not rewritten by these extractions.
+- `KV_MODE=json` extracts fields from `_raw`.
+- **JSON MQTT bodies** (HEC default): the input sends the parsed MQTT JSON as the HEC
+  `event` body. Splunk indexes it as `_raw` and `KV_MODE=json` extracts keys such as
+  `temperature_celsius`, `humidity_percent`, etc. Envelope metadata (`broker`, `topic`,
+  `payload`, `mqtt_host`, …) is sent via HEC `fields` and indexed alongside.
+- **Non-JSON bodies**: the full envelope dict is sent as the HEC `event`.
+- **Legacy envelope events**: use `spath` at search time if needed:
 
-Currently extracted payload keys:
+```spl
+| spath input=payload path=temperature_celsius
+```
 
-- `temperature_celsius`
-- `humidity_percent`
-- `pressure_millibar`
-- `illuminance_lux`
-- `uv_index`
-- `timestamp`
-- `v`
-- `temp`
-- `humidity`
-- `ok`
-- `state`
-- `sensor_id`
+Reload `props.conf` / `transforms.conf` without restarting Splunk:
 
-If a payload key is not in the list above, use `spath` directly in searches.
+```text
+http://localhost:8000/en-US/debug/refresh
+```
 
-Current CIM-oriented aliases also map:
+CIM aliases in `props.conf` (search-time, app TA-MQTT) :
 
-- `mqtt_host` -> `dest`
-- `port` -> `dest_port`
+| Champ CIM | Source |
+|-----------|--------|
+| `dest` | FIELDALIAS ← `mqtt_host` |
+| `dest_port` | FIELDALIAS ← `port` |
+| `src`, `dvc` | 3ᵉ segment du topic (ingest HEC + EXTRACT fallback) |
+| `app` | nom de connexion `broker` (ingest HEC) |
+| `action` | 4ᵉ segment du topic (ingest HEC + EXTRACT fallback) |
+| `transport` | constante `mqtt` (ingest HEC) |
 
 ## Search Examples
 
@@ -144,14 +147,13 @@ index=main sourcetype=mqtt:message
 ```
 
 ```spl
-index=main sourcetype=mqtt:message topic="home/devices/0123549ADEAA1D11EE/telemetry"
-| table _time topic temperature_celsius humidity_percent pressure_millibar illuminance_lux uv_index v
+index=main sourcetype=mqtt:message
+| table _time topic dvc temperature_celsius humidity_percent pressure_millibar illuminance_lux uv_index v
 ```
 
 ```spl
 index=main sourcetype=mqtt:message
-| eval payload_temp=spath(payload, "temp")
-| table _time topic payload payload_temp
+| table _time topic payload temp humidity state
 ```
 
 ## Runtime Health Logging
