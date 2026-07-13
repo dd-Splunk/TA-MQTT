@@ -4,6 +4,20 @@ All notable changes to TA-MQTT should be documented in this file.
 
 ## [Unreleased]
 
+## [2.4.2] - 2026-07-11
+
+### Added in 2.4.2
+
+- HEC event model: JSON MQTT bodies indexed as `_raw` with `KV_MODE=json`; envelope metadata sent via HEC `fields`.
+- CIM envelope fields at ingest (`src`, `dvc`, `app`, `action`, `transport`) plus `FIELDALIAS` `dest`/`dest_port` and topic `EXTRACT` fallbacks.
+- `transforms.conf` topic parsing; Search view shows CIM and telemetry columns.
+- Declared **Interprocess Messaging** and **Network Traffic** CIMs in `app.manifest`.
+
+### Changed in 2.4.2
+
+- Non-JSON MQTT payloads continue to use the full envelope dict as the HEC `event`.
+- Updated event indexing and CIM alias documentation in `docs/configuration-and-events.md`.
+
 ## [2.4.1] - 2026-07-11
 
 ### Fixed in 2.4.1
