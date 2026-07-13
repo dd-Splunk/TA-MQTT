@@ -22,9 +22,17 @@ services:
       SPLUNK_GENERAL_TERMS: --accept-sgt-current-at-splunk-com
       SPLUNK_START_ARGS: --accept-license
       SPLUNK_PASSWORD: ${SPLUNK_PASSWORD}
+      # Splunk OT Intelligence (Splunkbase app 5180, v4.13.2).
+      # Requires SPLUNKBASE_USERNAME / SPLUNKBASE_PASSWORD in .env on first Splunk start,
+      # or set SPLUNK_OTI_APPS_URL=/tmp/splunk-apps/splunk-ot-intelligence-4.13.2.tgz
+      # after placing the .tgz under tools/splunk-apps/.
+      SPLUNK_APPS_URL: ${SPLUNK_OTI_APPS_URL:-https://splunkbase.splunk.com/app/5180/release/4.13.2/download}
+      SPLUNKBASE_USERNAME: ${SPLUNKBASE_USERNAME:-}
+      SPLUNKBASE_PASSWORD: ${SPLUNKBASE_PASSWORD:-}
     volumes:
       - ./output/TA-MQTT:/opt/splunk/etc/apps/TA-MQTT
       - ./.splunk-persist/TA-MQTT-local:/opt/splunk/etc/apps/TA-MQTT/local
+      - ./tools/splunk-apps:/tmp/splunk-apps:ro
       - splunk-var:/opt/splunk/var
     restart: unless-stopped
 

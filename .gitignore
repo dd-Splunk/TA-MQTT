@@ -43,6 +43,7 @@ htmlcov/
 # Environment / secrets
 .env
 .env.*
+!.env.example
 *.local
 *.key
 *.p8
@@ -66,3 +67,5 @@ artifacts/*
 !artifacts/.gitkeep
 .splunk-persist/
 tools/certs/
+tools/splunk-apps/*.tgz
+tools/splunk-apps/*.spl

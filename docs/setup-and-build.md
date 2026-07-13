@@ -57,16 +57,49 @@ Default ports:
 The local Compose stack is intended for development and testing. It starts:
 
 - `mosquitto`: local anonymous MQTT broker using `tools/mosquitto.conf`
-- `splunk`: Splunk Enterprise with `output/TA-MQTT/` bind-mounted as the app
+- `splunk`: Splunk Enterprise with `output/TA-MQTT/` bind-mounted as the app, and
+  **Splunk OT Intelligence** (Splunkbase [app 5180](https://splunkbase.splunk.com/app/5180))
+  installed via `SPLUNK_APPS_URL` on first container start
 
-The same stack can be driven either by the repo-local JMeter publisher workflow
-in `tools/jmeter/` and documented in [Performance Testing](./performance-testing.md)
-or by the fallback Python script in `tools/mqtt_load_test.py`.
+### Splunk OT Intelligence (optional lab dependency)
+
+On **first** Splunk start, the `splunk/splunk` image downloads and installs OT Intelligence
+when Splunkbase credentials are set in `.env`. Authentication uses the Splunkbase
+`api/account:login` session token (same as docker-splunk), **not** HTTP basic auth on the
+download URL.
+
+```bash
+SPLUNKBASE_USERNAME=<your-splunk-com-account>
+SPLUNKBASE_PASSWORD=<your-splunk-com-password>
+```
+
+If the account uses MFA and login fails, either download the `.tgz` manually from Splunkbase
+or set `SPLUNKBASE_SID` + `SPLUNKBASE_SSOID` from browser cookies after logging in.
+
+Offline alternative: download the `.tgz` from Splunkbase and save it as
+`tools/splunk-apps/splunk-ot-intelligence-4.13.2.tgz`, then set:
+
+```bash
+SPLUNK_OTI_APPS_URL=/tmp/splunk-apps/splunk-ot-intelligence-4.13.2.tgz
+```
+
+If Splunk was already initialized (`splunk-var` volume exists), `SPLUNK_APPS_URL` is not
+re-applied. Install manually:
+
+```bash
+chmod +x tools/install-splunk-oti.sh
+./tools/install-splunk-oti.sh
+```
 
 Volume mounts used by `compose.yml`:
 
 - `output/TA-MQTT` -> `/opt/splunk/etc/apps/TA-MQTT`
 - `.splunk-persist/TA-MQTT-local` -> `/opt/splunk/etc/apps/TA-MQTT/local`
+- `tools/splunk-apps` -> `/tmp/splunk-apps` (offline OT Intelligence packages)
+
+The same stack can be driven either by the repo-local JMeter publisher workflow
+in `tools/jmeter/` and documented in [Performance Testing](./performance-testing.md)
+or by the fallback Python script in `tools/mqtt_load_test.py`.
 
 ## Reliable Rebuild Cycle
 
